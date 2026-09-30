@@ -6,9 +6,26 @@
   function refresh() { try { B.st = JSON.parse(FarmBridge.backupStatus() || 'null'); } catch (e) { B.st = null; } G.dirty = true; }
   window.onFarmBackup = () => { refresh(); B.msg = '저장 보관 위치를 정했어요. 지금부터 저장할 때마다 함께 복사돼요.'; };
   window.onFarmBackupFail = m => { B.msg = m || '저장하지 못했어요'; refresh(); };
+  // 실제로 불러오기 (확인 없이) — 다른 기기 저장 물어보기에서 '불러오기'를 눌렀을 때도 이것을 씀
+  window.applyRestore = t => {
+    const S = JSON.parse(t); if (S.rv !== 2) { S.rv = 2; t = JSON.stringify(S); }
+    G.S = S; G.restoring = true; clearTimeout(saveTimer); FarmBridge.save(t); try { localStorage.setItem(SAVE_KEY, t); } catch (e) {} location.reload();
+  };
+  // 파일을 고르면 먼저 그 파일 안의 진행을 보여 주고 확인받음 (엉뚱한 파일을 고르는 실수 방지)
   window.onFarmRestore = t => {
-    try { const S = JSON.parse(t); if (!S || S.v !== 1) throw 0; if (S.rv !== 2) { S.rv = 2; t = JSON.stringify(S); } G.S = S; G.restoring = true; clearTimeout(saveTimer); FarmBridge.save(t); try { localStorage.setItem(SAVE_KEY, t); } catch (e) {} location.reload(); }
-    catch (e) { B.msg = '이 파일은 문선농장 저장이 아니에요'; B.ask = false; G.dirty = true; }
+    let S = null; try { S = JSON.parse(t); } catch (e) {}
+    if (!S || S.v !== 1) { B.msg = '이 파일은 문플로 저장이 아니에요'; B.ask = false; G.dirty = true; return; }
+    const fl = S.flowers ? Object.values(S.flowers).reduce((a, b) => a + (+b || 0), 0) : 0;
+    const info = [`저장한 때: ${S.ts ? fmt(S.ts) : '알 수 없음'}`, `돈 ${S.coins || 0} · 다이아 ${S.gems || 0}`, `화단 ${(S.beds || []).length}개 · 지금까지 수확 ${(S.stats && S.stats.harvest) || 0}송이 · 가진 꽃 ${fl}송이`];
+    openPopup({
+      title: '이 파일을 불러올까요?',
+      draw(r) {
+        this.btns = []; const [x, y, w] = r, pd = G.mode === 'pad', fs = pd ? 36 : 40, bh = pd ? 100 : 130;
+        wrap('고른 파일 안의 진행이에요:\n' + info.join('\n'), x, y + 10, w, fs, '#6e4b28');
+        const b1 = [x, y + (pd ? 330 : 420), w, bh]; button(b1, '이 진행으로 불러오기', { size: fs }); this.btns.push({ rect: b1, fn: () => window.applyRestore(t) });
+        const b2 = [x, b1[1] + bh + 20, w, bh]; button(b2, '다른 파일 고르기', { size: fs }); this.btns.push({ rect: b2, fn: () => { G.popup = null; try { FarmBridge.pickRestore(); } catch (e) {} } });
+      },
+    });
   };
   const fmt = t => { if (!t) return '아직 없어요'; const d = new Date(t); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
   window.openBackup = function () {
@@ -55,7 +72,7 @@
         draw(r) {
           this.btns = []; const [x, y, w] = r, pd = G.mode === 'pad', fs = pd ? 36 : 40, bh = pd ? 100 : 130;
           wrap(`다른 기기에서 ${fmt(R.ts)}에 저장한 더 최근 진행이 있어요.\n불러오면 이 기기의 지금 진행은 그 진행으로 바뀌어요.`, x, y + 10, w, fs, '#6e4b28');
-          const b1 = [x, y + (pd ? 250 : 330), w, bh]; button(b1, '불러와서 이어서 하기', { size: fs }); this.btns.push({ rect: b1, fn: () => { done(); window.onFarmRestore(text); } });
+          const b1 = [x, y + (pd ? 250 : 330), w, bh]; button(b1, '불러와서 이어서 하기', { size: fs }); this.btns.push({ rect: b1, fn: () => { done(); window.applyRestore(text); } });
           const b2 = [x, b1[1] + bh + 20, w, bh]; button(b2, '이 기기 진행 그대로 두기', { size: fs }); this.btns.push({ rect: b2, fn: () => { declined = R.ts; done(); G.popup = null; } });
         },
       });

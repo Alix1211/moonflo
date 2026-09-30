@@ -65,7 +65,7 @@
           var d = new Date(R.ts || 0), box = document.getElementById('rem');
           box.innerHTML = '<div>다른 기기에서 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2) + '에 저장한<br>더 최근 진행이 있어요. 불러올까요?</div><button id="remY">불러와서 이어서 하기</button><button id="remN">이 기기 진행 그대로 하기</button>';
           box.style.display = 'flex'; var hh = document.getElementById('hint'); if (hh) hh.style.display = 'none';
-          document.getElementById('remY').onclick = function () { window.onFarmRemote = orig; done = true; window.onFarmRestore(text); };
+          document.getElementById('remY').onclick = function () { window.onFarmRemote = orig; done = true; (window.applyRestore || window.onFarmRestore)(text); };
           document.getElementById('remN').onclick = fin;
         } catch (e) { fin(); }
       };
