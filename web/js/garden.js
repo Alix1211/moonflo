@@ -100,7 +100,6 @@
   }
   // 쓸어서 한 번에: 도구를 사야 열림 (물주기=조리개 2칸 이상, 수확=장갑 2칸 이상, 땅 갈기·심기=둘 다)
   function canSwipe(act) {
-    if (G.S.swipe) return true;                 // 예전 규칙으로 이미 열린 저장은 그대로 쓸기 가능 (뺏지 않음)
     const c = G.S.can >= 2, g = G.S.glove >= 2;
     return act === 'water' ? c : act === 'harvest' ? g : (act === 'till' || act === 'plant') ? c && g : false;
   }
