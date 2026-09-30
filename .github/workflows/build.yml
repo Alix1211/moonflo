@@ -1,0 +1,46 @@
+name: 문플로 게임 올리기 · 앱 만들기
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency: { group: moonflo, cancel-in-progress: true }
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: '${{ steps.deploy.outputs.page_url }}' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: web }
+      - id: deploy
+        uses: actions/deploy-pages@v4
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: |
+            app:
+              - 'android/**'
+      - if: steps.f.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - if: steps.f.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+        name: 앱 만들기
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - if: steps.f.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+        name: 받기 페이지에 올리기
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-latest
+          name: 문플로 앱 (최신)
+          body: 이 페이지의 moonflo.apk 를 폰에서 눌러 받아 설치하세요. 지우지 말고 덮어 설치하면 저장이 그대로 남습니다.
+          make_latest: true
+          files: android/app/build/outputs/apk/debug/moonflo.apk

@@ -1,0 +1,242 @@
+// 문선농장 — 의뢰 게시판, 우체통
+'use strict';
+
+/* ---------- 의뢰 ---------- */
+function makeOrder() {
+  // 빨리 자라는 꽃이 더 자주 나옴
+  const open = openKinds(), first = (G.S.stats.orders || 0) < 3;       // 처음 3건은 처음 받은 씨앗(튤립·데이지·해바라기)으로 쉽게
+  const pool = first ? Object.keys(RULES.startSeeds).map(id => FLOWER[id]) : FLOWERS.slice(0, open).flatMap((f, i) => Array(open - i).fill(f));
+  const kinds = first || Math.random() < .55 ? 1 : 2, need = {};
+  while (Object.keys(need).length < kinds) {
+    const f = pool[Math.floor(Math.random() * pool.length)];
+    if (!need[f.id]) need[f.id] = first ? 2 : 2 + Math.floor(Math.random() * 3);
+  }
+  let v = 0; for (const id in need) v += need[id] * (FLOWER[id].grow[0] + FLOWER[id].grow[1]);
+  return { need, coins: Math.max(3, Math.round(v / 6)) * 10, id: Date.now() + Math.random() };
+}
+const ordersMax = () => RULES.ordersPerDay;
+const orderGapMin = () => RULES.orderGapMin[Math.min(G.S.beds.length, RULES.orderGapMin.length) - 1];   // 화단이 늘수록 새 의뢰가 더 자주 옴
+function refreshOrders() {
+  const S = G.S, d = todayKey();
+  if (S.day !== d) { S.day = d; S.doneToday = 0; S.orders = []; S.nextOrderAt = 0; }
+  let add = false; const now = Date.now();
+  while (S.orders.length < RULES.orderSlots && S.doneToday + S.orders.length < ordersMax() && now >= (S.nextOrderAt || 0)) { S.orders.push(makeOrder()); S.nextOrderAt = now + orderGapMin() * MIN; add = true; }
+  if (add) { save(); G.dirty = true; }
+  refreshSpecial(); maybeHintMail();
+}
+function canDeliver(o) { for (const id in o.need) if ((G.S.flowers[id] || 0) < o.need[id]) return false; return true; }
+function deliver(o) {
+  for (const id in o.need) G.S.flowers[id] -= o.need[id];
+  G.S.coins += o.coins; G.S.doneToday++; G.S.stats.orders = (G.S.stats.orders || 0) + 1;
+  const mis = (G.S.mission = G.S.mission && G.S.mission.day === G.S.day ? G.S.mission : { day: G.S.day, done: false });
+  if (!mis.done && G.S.doneToday >= RULES.missionOrders) { mis.done = true; G.S.gems += RULES.missionGems; setTimeout(() => toast(`오늘의 미션 완료! 다이아 +${RULES.missionGems}`, 3000), 2400); }
+  G.S.orders = G.S.orders.filter(x => x !== o);
+  refreshOrders(); save(); toast(`납품 완료! 돈 +${o.coins}`);
+  if (typeof buddyReact === 'function') buddyReact('꽃 배달 다녀왔어요!', 'po_basket'); else if (typeof buddyCheer === 'function') buddyCheer();
+}
+function openOrders() {
+  refreshOrders();
+  openPopup({
+    title: `의뢰 게시판  (오늘 ${G.S.doneToday}/${ordersMax()})`, big: 'laugh',
+    draw(r) {
+      this.btns = [];
+      const list = G.S.orders;
+      if (!list.length) { text(G.S.doneToday >= ordersMax() ? '오늘 의뢰는 모두 끝났어요. 내일 새 의뢰가 와요.' : `새 의뢰를 기다리는 중이에요. (${Math.max(1, Math.ceil(((G.S.nextOrderAt || 0) - Date.now()) / MIN))}분 뒤)`, r[0] + r[2] / 2, r[1] + r[3] / 2, 40, '#8a6a44', 'center'); return; }
+      const rows = gridRects(r, 1, RULES.orderSlots, 26);
+      list.forEach((o, i) => {
+        const rc = rows[i], ok = canDeliver(o); card(rc, ok);
+        const [x, y, w, h] = rc; let cx = x + 40;
+        const s = Math.min(h * .72, 130);
+        for (const id in o.need) {
+          imgFit(G.img[`flower_${id}_bloom`], cx + s / 2, y + h / 2 - 10, s);
+          const have = G.S.flowers[id];
+          text(`${FLOWER[id].name} ${Math.min(have, o.need[id])}/${o.need[id]}`, cx + s / 2, y + h - 30, 30, have >= o.need[id] ? '#4f7d2c' : '#8a6a44', 'center');
+          cx += s + 60;
+        }
+        drawCoin(x + w - 350, y + h / 2, 22); text(`+${o.coins}`, x + w - 318, y + h / 2 + 2, 42, '#b07a12');
+        const br = [x + w - 200, y + h / 2 - 60, 170, 120];
+        button(br, '납품', { disabled: !ok, size: 42 });
+        this.btns.push({ rect: br, disabled: !ok, fn: () => deliver(o) });
+      });
+    },
+  });
+}
+
+/* ---------- 우체통 ---------- */
+// 편지는 나중에 구글 시트에서 받아 옴. 지금은 저장된 편지만 보여 줌.
+function openMail() {
+  let open = null, writing = false, sent = '';
+  if (window.pullMails) pullMails();
+  openPopup({
+    title: '우체통', big: 'smile', vals: {},
+    fields(r) { return writing ? [{ key: 'reply', multi: true, rect: [r[0], r[1] + 20, r[2], G.mode === 'pad' ? 250 : 600], size: G.mode === 'pad' ? 38 : 44, ph: '여기를 눌러 편지를 적어 주세요. 키보드의 마이크로 말해도 돼요' }] : null; },
+    draw(r) {
+      this.btns = [];
+      const list = G.S.mails;
+      if (writing) {
+        const pd = G.mode === 'pad', by = pd ? r[1] + 300 : r[1] + 660, bw = (r[2] - 20) / 2;
+        const b1 = [r[0], by, bw, 120], b2 = [r[0] + bw + 20, by, bw, 120];
+        button(b1, '보내기', { size: 46 }); this.btns.push({ rect: b1, fn: async () => {
+          const t = ((this.vals && this.vals.reply) || '').trim(); if (!t) { toast('먼저 편지를 적어 주세요'); return; }
+          const ok = await sendReply(t); writing = false; this.vals = {}; sent = ok ? '편지를 보냈어요' : '보냈어요 (인터넷이 되면 전해져요)'; toast(sent, 3000); G.dirty = true; } });
+        button(b2, '그만두기', { size: 46 }); this.btns.push({ rect: b2, fn: () => { writing = false; } });
+        return;
+      }
+      if (open) {
+        const [x, y, w] = r;
+        text(open.from || '', x, y + 30, 38, '#9b7148');
+        wrap(open.body || '', x, y + 100, w, 44, '#5c3d1e');
+        const back = [x, r[1] + r[3] - 110, 260, 100];
+        button(back, '목록', { size: 40 }); this.btns.push({ rect: back, fn: () => { open = null; } });
+        const o = open.offer;
+        if (o) {
+          const ii = { can2: 'it_can', can4: 'it_can2', glove2: 'it_glove', glove4: 'it_glove2' }[open.id], iim = ii && G.img[ii];
+          if (iim) { const ih = 190, iw = ih * iim.width / iim.height; ctx.drawImage(iim, x + w * .52 - iw / 2, r[1] + r[3] - 205 - ih / 2, iw, ih); }
+          text(o.name, x, r[1] + r[3] - 300, 48, '#6e4b28');
+          drawCoin(x + 26, r[1] + r[3] - 230, 24); text(String(o.cost), x + 66, r[1] + r[3] - 228, 44, '#b07a12');
+          const owned = !!G.S.owned[open.id], can = !owned && G.S.coins >= o.cost;
+          const br = [r[0] + r[2] - 330, r[1] + r[3] - 290, 330, 170];
+          button(br, owned ? '구매 완료' : '구매', { disabled: !can, size: 46 });
+          this.btns.push({ rect: br, disabled: !can, fn: () => buy(open) });
+        }
+        const so = open.sorder;
+        if (so) {
+          const sp = SPECIAL[so.sp], done = !!so.done, have = (G.S.sflowers && G.S.sflowers[so.sp]) || 0, ok = !done && have >= 1, cy = r[1] + r[3] - 215;
+          drawHalo(x + 90, cy, 100, sp.hue); imgFit(G.img[`flower_${baseId(sp.id)}_bloom`], x + 90, cy, 120);
+          text(`「${sp.name}」 ${Math.min(have, 1)}/1`, x + 210, cy - 34, 40, ok ? '#4f7d2c' : '#6e4b28');
+          drawCoin(x + 226, cy + 34, 22); text(`+${so.coins}`, x + 262, cy + 36, 40, '#b07a12');
+          if (so.gems) { drawGem(x + 420, cy + 34, 22); text(`+${so.gems}`, x + 456, cy + 36, 40, '#2a8aa8'); }
+          const br = [r[0] + r[2] - 330, r[1] + r[3] - 290, 330, 170];
+          button(br, done ? '납품 완료' : '납품', { disabled: !ok, size: 46 });
+          this.btns.push({ rect: br, disabled: !ok, fn: () => deliverSpecial(open) });
+        }
+        const gf = open.gift;
+        if (gf) {
+          const got = !!(G.S.claimed && G.S.claimed[open.id]);
+          text('선물', x, r[1] + r[3] - 300, 48, '#6e4b28');
+          text(giftText(gf), x, r[1] + r[3] - 226, 40, '#b07a12');
+          const br = [r[0] + r[2] - 330, r[1] + r[3] - 290, 330, 170];
+          button(br, got ? '받았어요' : '받기', { disabled: got, size: 46 });
+          this.btns.push({ rect: br, disabled: got, fn: () => claimGift(open) });
+        }
+        return;
+      }
+      if (window.mailReady && mailReady()) { const wb = [r[0], r[1] + r[3] - 100, r[2], 100]; button(wb, '편지 쓰기', { size: 42 }); this.btns.push({ rect: wb, fn: () => { writing = true; this.vals = {}; } }); }
+      if (!list.length) { text('아직 온 편지가 없어요', r[0] + r[2] / 2, r[1] + r[3] / 2, 44, '#8a6a44', 'center'); return; }
+      gridRects([r[0], r[1], r[2], Math.min(r[3] - 120, 6 * 150)], 1, 6, 16).forEach((rc, i) => {
+        const m = list[list.length - 1 - i]; if (!m) return;
+        card(rc, !m.read);
+        text(`${m.read ? '' : '● '}${m.from || ''}${m.offer ? '  · ' + m.offer.name : ''}${m.sorder ? (m.sorder.done ? '  · 납품 완료' : '  · 특수 의뢰') : ''}${m.gift ? (G.S.claimed && G.S.claimed[m.id] ? '  · 선물 받음' : '  · 선물') : ''}`, rc[0] + 30, rc[1] + rc[3] / 2, 38, m.read ? '#8a6a44' : '#c0522c');
+        this.btns.push({ rect: rc, fn: () => { open = m; if (!m.read) { m.read = true; save(); } } });
+      });
+    },
+  });
+}
+function buy(mail) {
+  const o = mail.offer; if (!o || G.S.owned[mail.id] || G.S.coins < o.cost) return;
+  G.S.coins -= o.cost; G.S.owned[mail.id] = true;
+  if (o.kind === 'can') G.S.can = Math.max(G.S.can, o.v);
+  if (o.kind === 'glove') G.S.glove = Math.max(G.S.glove, o.v);
+  if ((o.kind === 'can' || o.kind === 'glove') && o.v === 2) setTimeout(() => {
+    const both = G.S.can >= 2 && G.S.glove >= 2;
+    toast(o.kind === 'can' ? '이제 손가락을 쓸어서 여러 칸에 물을 줄 수 있어요!' : '이제 손가락을 쓸어서 여러 송이를 거둘 수 있어요!', 4200);
+    if (both) setTimeout(() => toast('도구가 다 모였어요! 땅 갈기와 심기도 쓸어서 할 수 있어요', 4200), 4400);
+  }, 900);
+  if (o.kind === 'bed' && G.S.beds.length < RULES.maxBeds) { G.S.beds.push(Array.from({ length: 16 }, () => ({ s: 'empty' }))); if (G.screens.garden && G.screens.garden.invalidate) G.screens.garden.invalidate(); refreshOrders(); }
+  save(); toast(`${o.name} 구매 완료!`);
+}
+function wrap(str, x, y, w, size, color) {
+  ctx.font = font(size, 500); let line = '', yy = y;
+  for (const ch of str) {
+    if (ch === '\n' || ctx.measureText(line + ch).width > w) { text(line, x, yy, size, color, 'left', false, 500); yy += size * 1.5; line = ch === '\n' ? '' : ch; }
+    else line += ch;
+  }
+  if (line) text(line, x, yy, size, color, 'left', false, 500);
+}
+
+/* ---------- 편지 선물: 돈·다이아·씨앗을 붙여 보낼 수 있음 (gift: { coins, gems, seeds: { tulip: 3 } }) ---------- */
+function giftText(g) {
+  const p = [];
+  if (g.hint) p.push(`연구 힌트 ${g.hint}`); if (g.coins) p.push(`돈 ${g.coins}`); if (g.gems) p.push(`다이아 ${g.gems}`);
+  for (const id in (g.seeds || {})) p.push(`${FLOWER[id] ? FLOWER[id].name : id} 씨앗 ${g.seeds[id]}`);
+  for (const id in (g.items || {})) { const h = HG.find(x => x.id === id); p.push(`${h ? h.name : id} ${g.items[id]}`); }
+  return p.join(' · ') || '선물';
+}
+function claimGift(mail) {
+  const g = mail.gift, S = G.S; if (!g) return;
+  S.claimed = S.claimed || {}; if (S.claimed[mail.id]) return;
+  S.claimed[mail.id] = true;
+  S.coins += g.coins || 0; S.gems += g.gems || 0;
+  let hm = ''; for (let i = 0; i < (g.hint || 0); i++) hm += giveHint();
+  for (const id in (g.seeds || {})) S.seeds[id] = (S.seeds[id] || 0) + g.seeds[id];
+  for (const id in (g.items || {})) addItem(id, g.items[id]);
+  save(); G.dirty = true; toast(`선물을 받았어요! ${giftText(g)}${hm}`, hm ? 4200 : 2200);
+}
+
+/* ---------- 모래시계: 인벤토리에 모아 두었다가 원할 때 사용 ---------- */
+const HG = [{ id: 'hg_10', min: 10, name: '모래시계 10분', cost: 5 }, { id: 'hg_30', min: 30, name: '모래시계 30분', cost: 12 },
+            { id: 'hg_60', min: 60, name: '모래시계 1시간', cost: 20 }, { id: 'hg_360', min: 360, name: '모래시계 6시간', cost: 100 }];
+const itemCount = id => (G.S.items && G.S.items[id]) || 0;
+function addItem(id, n) { G.S.items = G.S.items || {}; G.S.items[id] = itemCount(id) + n; }
+function useHourglass(h) {
+  if (itemCount(h.id) < 1) return false;
+  const cells = []; for (const bed of G.S.beds) for (const c of bed) if (c.wet && c.until) cells.push(c);
+  if (!cells.length) { toast('자라는 꽃이 없어요'); return false; }
+  G.S.items[h.id]--; cells.forEach(c => { c.until -= h.min * MIN; });
+  if (G.screens.garden && G.screens.garden.invalidate) G.screens.garden.invalidate();
+  save(); G.dirty = true; toast(`자라는 꽃 ${cells.length}칸이 ${h.name.replace('모래시계 ', '')} 줄었어요`); return true;
+}
+
+/* ---------- 특수 의뢰: 메일로 옴. 특수 꽃 한 송이를 납품 ---------- */
+function flowerGrow(id) { const f = FLOWER[id]; const g = f ? f.grow : FUTURE_GROW[id]; return g[0] + g[1]; }
+function spBase(sp) { let v = 0; for (const t of sp.ing) { const [k, id] = t.split(':'); v += k === 'sp' ? spBase(SPECIAL[id]) : flowerGrow(id); } return v; }
+function spReward(sp) { return { coins: Math.max(3, Math.round(spBase(sp) / 6)) * 10 * RULES.specialMult[sp.grade], gems: RULES.specialGems[sp.grade] }; }
+function spOpen(sp) { const n = openKinds(); return sp.ing.every(t => { const [k, id] = t.split(':'); return k === 'sp' ? spOpen(SPECIAL[id]) : FLOWERS.findIndex(f => f.id === id) < n && FLOWERS.findIndex(f => f.id === id) >= 0; }); }
+function spMakeable(sp) { return sp.ing.every(t => { const [k, id] = t.split(':'); return k === 'sp' ? spMakeable(SPECIAL[id]) : !!FLOWER[id]; }); }
+function refreshSpecial() {
+  const S = G.S, d = todayKey(), now = Date.now();
+  if (S.spDay !== d) { S.spDay = d; S.spCount = 0; S.nextSpAt = 0; }
+  if (S.beds.length < RULES.specialFromBeds || S.spCount >= RULES.specialPerDay || now < (S.nextSpAt || 0)) return;
+  const open = S.mails.filter(x => x.sorder && !x.sorder.done);
+  if (open.length >= RULES.specialOpen) return;
+  const pool = SPECIALS.filter(s => s.id !== 'sp40' && spMakeable(s) && spOpen(s) && s.grade <= S.beds.length && !open.some(x => x.sorder.sp === s.id));   // 열린 꽃으로 만들 수 있고, 밭 수만큼의 등급까지만
+  if (!pool.length) return;
+  const sp = pool[Math.floor(Math.random() * pool.length)], [who, req] = SPECIAL_STORY[sp.id], rw = spReward(sp);
+  S.mails.push({ id: 'so_' + now, from: who, body: `안녕하세요, ${who}입니다.\n${req}\n「${sp.name}」 한 송이를 부탁드립니다.`, read: false, sorder: { sp: sp.id, coins: rw.coins, gems: rw.gems } });
+  S.spCount++; S.nextSpAt = now + RULES.specialGapMin * MIN; save(); G.dirty = true; toast('특수 의뢰 편지가 왔어요');
+}
+function deliverSpecial(mail) {
+  const so = mail.sorder, S = G.S; if (!so || so.done) return;
+  S.sflowers = S.sflowers || {}; if ((S.sflowers[so.sp] || 0) < 1) return;
+  S.sflowers[so.sp]--; so.done = true; S.coins += so.coins; S.gems += so.gems || 0;
+  const hm = giveHint(); save(); G.dirty = true; toast(`납품 완료! 돈 +${so.coins}${so.gems ? ' · 다이아 +' + so.gems : ''}${hm}`, 4200);
+}
+
+/* ---------- 특수꽃을 일반 꽃처럼 다루는 도우미 ---------- */
+function spBaseFlower(sp) { for (const t of sp.ing) { const [k, id] = t.split(':'); if (k === 'sp') { const b = spBaseFlower(SPECIAL[id]); if (FLOWER[b]) return b; } else if (FLOWER[id]) return id; } return sp.ing[0].split(':')[1]; }
+function spGrow(sp) { let a = 0, b = 0; for (const t of sp.ing) { const [k, id] = t.split(':'), g = k === 'sp' ? spGrow(SPECIAL[id]) : (FLOWER[id] ? FLOWER[id].grow : FUTURE_GROW[id]); a = Math.max(a, g[0]); b = Math.max(b, g[1]); } return [a, b]; }
+function FD(id) {             // 꽃 또는 특수꽃의 정보 (이름·자라는 시간·색)
+  if (FLOWER[id]) return FLOWER[id];
+  const sp = SPECIAL[id]; if (!sp) return FLOWERS[0];
+  return sp._fd || (sp._fd = { id, name: sp.name, grow: spGrow(sp), color: `hsl(${sp.hue},90%,70%)` });
+}
+const baseId = id => SPECIAL[id] ? spBaseFlower(SPECIAL[id]) : id;
+const seedN = id => SPECIAL[id] ? ((G.S.sseeds || {})[id] || 0) : (G.S.seeds[id] || 0);
+const takeSeed = id => { if (SPECIAL[id]) G.S.sseeds[id]--; else G.S.seeds[id]--; };
+function addBloom(id, n) { if (SPECIAL[id]) { G.S.sflowers = G.S.sflowers || {}; G.S.sflowers[id] = (G.S.sflowers[id] || 0) + n; } else G.S.flowers[id] += n; }
+
+/* ---------- 연구 힌트: 아직 못 만든 특수 꽃씨의 재료를 하나씩 알려 줌 (소품 구매·특수 의뢰 납품·요정 편지) ---------- */
+function tokName(t) { const [k, id] = t.split(':'); return k === 'sp' ? SPECIAL[id].name + ' 꽃씨' : (FLOWER[id] ? FLOWER[id].name : id) + (k === 'seed' ? ' 씨앗' : ' 꽃'); }
+function hintPool() { const S = G.S; S.hints = S.hints || {}; S.found = S.found || {}; return SPECIALS.filter(s => !S.found[s.id] && (S.hints[s.id] || 0) < 3 && spOpen(s)); }
+function giveHint() {
+  const S = G.S, pool = hintPool(); if (!pool.length) return '';
+  const low = Math.min(...pool.map(s => s.grade)), c = pool.filter(s => s.grade <= low + 1), sp = c[Math.floor(Math.random() * c.length)];
+  const n = (S.hints[sp.id] || 0) + 1; S.hints[sp.id] = n;
+  return `\n힌트: 어떤 꽃씨의 재료 「${tokName(sp.ing[n - 1])}」`;
+}
+function maybeHintMail() {
+  const S = G.S, k = todayKey(); if (S.hintMailDay === k) return; S.hintMailDay = k;
+  if (Math.random() > .5 || !hintPool().length) return;
+  S.mails.push({ id: 'hm_' + k, from: '시간의 요정', body: '요정이 쪽지를 두고 갔어요.\n연구에 쓸 수 있는 힌트가 들어 있어요.', read: false, gift: { hint: 1 } });
+  toast('우체통에 새 편지가 왔어요');
+}
