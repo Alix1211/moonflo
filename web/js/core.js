@@ -142,7 +142,7 @@ function save(now) {
   if (G.restoring) return;               // 불러오는 중에는 지금 진행으로 덮어쓰지 않음
   clearTimeout(saveTimer);
   const run = () => {
-    G.S.ts = Date.now(); G.S.dev = DEV;
+    G.S.ts = Date.now(); G.S.dev = DEV; if (!G.syncHold) G.S.syncTs = G.S.ts;   // 막혀 있지 않으면 이 저장이 보관 파일로도 감
     const txt = JSON.stringify(G.S);
     try { localStorage.setItem(SAVE_KEY, txt); } catch (e) {}
     try { if (window.FarmBridge && FarmBridge.save) FarmBridge.save(txt); } catch (e) {}

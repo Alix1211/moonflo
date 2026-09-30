@@ -52,6 +52,7 @@
   // 시작할 때: 다른 기기에서 더 최근에 저장한 진행이 있으면 물어봄 (없으면 그냥 시작)
   function askRemote() {
     return new Promise(function (res) {
+      return res();   // 확인은 게임 안(backup.js)에서 한 번에 함
       if (!(window.FarmBridge && FarmBridge.checkRemote && FarmBridge.backupStatus)) return res();
       var done = false, orig = window.onFarmRemote;
       function fin() { if (done) return; done = true; window.onFarmRemote = orig; var b = document.getElementById('rem'); if (b) b.style.display = 'none'; res(); }

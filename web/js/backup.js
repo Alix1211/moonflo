@@ -8,7 +8,7 @@
   window.onFarmBackupFail = m => { B.msg = m || '저장하지 못했어요'; refresh(); };
   // 실제로 불러오기 (확인 없이) — 다른 기기 저장 물어보기에서 '불러오기'를 눌렀을 때도 이것을 씀
   window.applyRestore = t => {
-    const S = JSON.parse(t); if (S.rv !== 2) { S.rv = 2; t = JSON.stringify(S); }
+    const S = JSON.parse(t); S.rv = 2; S.syncTs = S.ts || Date.now(); t = JSON.stringify(S);
     G.S = S; G.restoring = true; clearTimeout(saveTimer); FarmBridge.save(t); try { localStorage.setItem(SAVE_KEY, t); } catch (e) {} location.reload();
   };
   // 파일을 고르면 먼저 그 파일 안의 진행을 보여 주고 확인받음 (엉뚱한 파일을 고르는 실수 방지)
@@ -57,28 +57,37 @@
     });
   };
 
-  /* ---- 다른 기기에서 더 최근에 저장했으면 물어보고 불러오기 ---- */
-  let declined = 0, asking = false;
-  window.onFarmLinked = () => { B.msg = '연결했어요. 다른 기기의 저장이 더 최근이면 물어볼게요.'; setTimeout(() => { try { FarmBridge.checkRemote(); } catch (e) {} }, 300); };
+  /* ---- 여러 기기가 한 파일을 함께 쓸 때: 다른 기기가 더 나중에 저장했으면 덮어쓰지 않고 먼저 물어봄 ----
+     syncTs = 이 기기가 알고 있는 '보관 파일의 마지막 저장 시각'. 파일 안의 시각이 이보다 새로우면 다른 기기가 쓴 것 */
+  let asking = false;
+  const hold = on => { G.syncHold = on; try { FarmBridge.holdBackup(on ? 30 * 60000 : 0); } catch (e) {} };
+  if (window.FarmBridge && FarmBridge.holdBackup) hold(true);   // 확인이 끝나기 전에는 보관 파일에 쓰지 않음
+  window.onFarmLinked = () => { B.msg = '연결했어요. 파일 안의 진행을 확인할게요.'; chk(true); };
+  const info = R => { const fl = R.flowers ? Object.values(R.flowers).reduce((a, b) => a + (+b || 0), 0) : 0; return `돈 ${R.coins || 0} · 다이아 ${R.gems || 0} · 화단 ${(R.beds || []).length}개 · 수확 ${(R.stats && R.stats.harvest) || 0}송이 · 가진 꽃 ${fl}송이`; };
   window.onFarmRemote = text => {
-    try {
-      const R = JSON.parse(text);
-      if (!R || R.v !== 1 || R.rv !== 2 || !G.S || R.dev === DEV || asking) return;
-      if ((R.ts || 0) <= (G.S.ts || 0) + 3000 || R.ts === declined) return;
-      asking = true; try { FarmBridge.holdBackup(120000); } catch (e) {}
-      const done = () => { asking = false; try { FarmBridge.holdBackup(0); } catch (e) {} };
-      openPopup({
-        title: '다른 기기의 저장',
-        draw(r) {
-          this.btns = []; const [x, y, w] = r, pd = G.mode === 'pad', fs = pd ? 36 : 40, bh = pd ? 100 : 130;
-          wrap(`다른 기기에서 ${fmt(R.ts)}에 저장한 더 최근 진행이 있어요.\n불러오면 이 기기의 지금 진행은 그 진행으로 바뀌어요.`, x, y + 10, w, fs, '#6e4b28');
-          const b1 = [x, y + (pd ? 250 : 330), w, bh]; button(b1, '불러와서 이어서 하기', { size: fs }); this.btns.push({ rect: b1, fn: () => { done(); window.applyRestore(text); } });
-          const b2 = [x, b1[1] + bh + 20, w, bh]; button(b2, '이 기기 진행 그대로 두기', { size: fs }); this.btns.push({ rect: b2, fn: () => { declined = R.ts; done(); G.popup = null; } });
-        },
-      });
-    } catch (e) { }
+    if (asking) return;
+    let R = null; try { R = JSON.parse(text); } catch (e) {}
+    if (!R || R.v !== 1 || !G.S || !((R.ts || 0) > (G.S.syncTs || 0) + 2000)) { hold(false); return; }   // 파일이 없거나 이 기기가 마지막으로 쓴 것 → 그냥 진행
+    asking = true; hold(true);
+    const done = () => { asking = false; G.S.syncTs = R.ts; hold(false); };
+    openPopup({
+      title: '보관 파일에 다른 진행이 있어요', _sync: true,
+      draw(r) {
+        this.btns = []; const [x, y, w] = r, pd = G.mode === 'pad', fs = pd ? 32 : 38, bh = pd ? 96 : 124;
+        wrap(`다른 기기에서 ${fmt(R.ts)}에 저장한 진행이에요.\n${info(R)}\n\n지금 이 기기: ${info(G.S)}\n\n어느 쪽으로 할까요?`, x, y + 6, w, fs, '#6e4b28');
+        const b1 = [x, y + (pd ? 420 : 560), w, bh]; button(b1, '파일의 진행으로 이어서 하기', { size: fs }); this.btns.push({ rect: b1, fn: () => { asking = false; window.applyRestore(text); } });
+        const b2 = [x, b1[1] + bh + 18, w, bh]; button(b2, '이 기기 진행으로 파일 덮어쓰기', { size: fs }); this.btns.push({ rect: b2, fn: () => { done(); G.popup = null; save(true); setTimeout(() => { try { FarmBridge.backupNow(); } catch (e) {} }, 400); } });
+      },
+    });
   };
-  const chk = () => { try { if (window.FarmBridge && FarmBridge.checkRemote && G.S) FarmBridge.checkRemote(); } catch (e) {} };
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(chk, 1500); });
-  setTimeout(chk, 6000);
+  function chk(force) {
+    try {
+      if (asking && !(G.popup && G.popup._sync)) asking = false;          // 고르지 않고 닫았으면 다음에 다시 물어봄 (그동안 파일엔 안 씀)
+      if (!(window.FarmBridge && FarmBridge.checkRemote && G.S) || asking) return;
+      hold(true); FarmBridge.checkRemote();
+      setTimeout(() => { if (!asking && G.syncHold && !(G.popup && G.popup._sync)) hold(false); }, 20000);   // 답이 없으면 막아 둔 것 풀기
+    } catch (e) { hold(false); }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(chk, 800); });
+  { const t = setInterval(() => { if (G.S) { clearInterval(t); chk(); } }, 300); }
 })();
