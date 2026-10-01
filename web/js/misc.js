@@ -36,6 +36,11 @@ function refreshOrders() {
   const S = G.S, d = todayKey();
   if (S.day !== d) { S.day = d; S.doneToday = 0; S.orders = []; S.nextOrderAt = 0; }
   let add = false; const now = Date.now();
+  if (S.orderReset !== 1) {                         // 한 번만: 쌓여 있던 의뢰를 비우고 새로 채움 (납품한 건수·돈은 그대로)
+    S.orderReset = 1; S.orders = [];
+    while (S.orders.length < RULES.orderSlots && S.doneToday + S.orders.length < ordersMax()) S.orders.push(makeOrder());
+    S.nextOrderAt = now + orderGapMin() * MIN; add = true;
+  }
   // 아직 안 열린 꽃이 필요한 예전 의뢰는 열린 꽃 의뢰로 바꿔 줌 (이미 그 꽃을 갖고 있어 납품할 수 있으면 그대로 둠)
   const open = openKinds();
   S.orders = S.orders.map(o => {
