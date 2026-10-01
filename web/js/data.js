@@ -25,6 +25,7 @@ const RULES = {
   seedCost: 20,            // 씨앗 1개 = 같은 꽃 칩 포인트 20
   comboMax: 4,             // 연속 터짐(콤보) 점수 배수 상한: 2콤보 x2, 3콤보 x3, 4콤보 이상 x4
   harvestYield: 1,         // 꽃 1송이 수확
+  gloveBonusChance: 0.2,   // 수확 장갑 4칸이면 이 확률로 한 송이 더
   specialResearch: 3,      // 특수블록 1번 쓸 때 연구포인트
   ordersPerDay: 40,        // 하루 의뢰 최대
   orderGapMin: [6, 5, 4, 3.5, 3],      // 새 의뢰가 오는 간격(분): 화단 1~5개일 때
@@ -116,7 +117,7 @@ const SHOP_MAILS = [
   { id: 'glove2', trigger: 200, cost: 200, from: '원예용품점', requires: null,
     body: '수확할 때 두 송이를 한 번에 거두는 장갑이에요.\n이걸 끼면 손가락으로 쓸어서 여러 송이를 거둘 수도 있어요.',
     item: { kind: 'glove', v: 2, name: '수확 장갑 (2칸)' } },
-  { id: 'can4', trigger: 1500, cost: 1500, from: '원예용품점', requires: 'can2',
+  { id: 'can4', trigger: 1000, cost: 1000, from: '원예용품점', requires: 'can2',
     body: '이번엔 네 칸에 한꺼번에 물을 주는 큰 조리개예요.\n화단 하나가 금방 촉촉해져요.',
     item: { kind: 'can', v: 4, name: '물조리개 (4칸)' } },
   { id: 'glove4', trigger: 1750, cost: 1750, from: '원예용품점', requires: 'glove2',

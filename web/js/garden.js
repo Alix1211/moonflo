@@ -167,9 +167,10 @@
   }
   function harvestOne(b, k) {
     const cell = G.S.beds[b][k], [x, y, w] = cellRect(b, k), f = FD(cell.f);
-    addBloom(cell.f, RULES.harvestYield); G.S.stats.harvest++; SFX.both('harvest');
-    { const [, , , hh] = cellRect(b, k); fxPollen(x, y, w, hh || w, f.color, 22); }
-    floatText(`+${RULES.harvestYield} ${f.name}`, x + w / 2, y, '#fff6c8');
+    const n = RULES.harvestYield + (G.S.glove >= 4 && Math.random() < RULES.gloveBonusChance ? 1 : 0);      // 장갑 4칸이면 가끔 한 송이 더
+    addBloom(cell.f, n); G.S.stats.harvest++; SFX.both('harvest');
+    { const [, , , hh] = cellRect(b, k); fxPollen(x, y, w, hh || w, f.color, n > RULES.harvestYield ? 34 : 22); }
+    floatText(`+${n} ${f.name}`, x + w / 2, y, n > RULES.harvestYield ? '#ffe27a' : '#fff6c8');
     G.S.beds[b][k] = { s: 'empty' };
     if (Math.random() < .25 && typeof buddyReact === 'function') buddyReact('예쁘게 피었어요!', 'po_harvest'); else if (typeof buddyCheer === 'function') buddyCheer();
   }
@@ -419,7 +420,7 @@ function openSeedPicker() {
           text(f.name, rc[0] + rc[2] / 2, rc[1] + rc[3] * .75, 44, '#a8977f', 'center');
           text(`🔒 화단 ${need}개`, rc[0] + rc[2] / 2, rc[1] + rc[3] * .9, 34, '#a8977f', 'center', false, 500);
           const lh = scrollHit(this, r, rc);
-          if (lh) this.btns.push({ rect: lh, fn: () => toast(`${f.name}은(는) 화단이 ${need}개가 되면 열려요. 우체통 편지에서 화단을 살 수 있어요.`, 3800) });
+          if (lh) this.btns.push({ rect: lh, fn: () => toast(`${f.name}은(는) 화단이 ${need}개가 되면 열려요. 상점 「정원」 칸에서 화단을 살 수 있어요.`, 3800) });
           return;
         }
         const n = seedN(f.id), sel = G.S.cur === f.id;
