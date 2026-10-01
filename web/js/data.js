@@ -29,7 +29,9 @@ const RULES = {
   specialResearch: 3,      // 특수블록 1번 쓸 때 연구포인트
   ordersPerDay: 40,        // 하루 의뢰 최대
   orderGapMin: [6, 5, 4, 3.5, 3],      // 새 의뢰가 오는 간격(분): 화단 1~5개일 때
-  orderSlots: 3,           // 게시판 동시 의뢰 수
+  orderSlots: 6,           // 게시판 동시 의뢰 수 (비운 동안 쌓여서 이만큼까지 차 있음)
+  bigOrderChance: 0.12, bigOrderMult: 1.3,      // 큰 주문: 한 가지 꽃 6~8송이, 값 1.3배
+  mixOrderChance: 0.13, mixOrderMult: 1.25,     // 모둠 주문: 두 가지 꽃 각 4~5송이, 값 1.25배
   fairyEveryMin: 20,       // 시간의 요정 등장 간격(분, 실제로는 ±40% 무작위)
   fairyStaySec: 40,        // 하늘을 날아다니다 가 버리기까지(초)
   fairySkipMin: 2,         // 요정이 당겨 주는 시간(분)

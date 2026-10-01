@@ -6,13 +6,18 @@ function makeOrder() {
   // 빨리 자라는 꽃이 더 자주 나옴
   const open = openKinds(), first = (G.S.stats.orders || 0) < 3;       // 처음 3건은 처음 받은 씨앗(튤립·데이지·해바라기)으로 쉽게
   const pool = first ? Object.keys(RULES.startSeeds).map(id => FLOWER[id]) : FLOWERS.slice(0, open).flatMap((f, i) => Array(open - i).fill(f));
-  const kinds = first || Math.random() < .55 ? 1 : 2, need = {};
+  // 의뢰 종류: 보통 / 큰 주문(한 가지 꽃을 많이) / 모둠 주문(두 가지를 넉넉히). 큰 주문·모둠 주문은 값이 조금 더 후함
+  const roll = first ? 1 : Math.random(), type = roll < RULES.bigOrderChance ? 'big' : roll < RULES.bigOrderChance + RULES.mixOrderChance ? 'mix' : 'normal';
+  const kinds = type === 'big' ? 1 : type === 'mix' ? 2 : (first || Math.random() < .55 ? 1 : 2), need = {};
   while (Object.keys(need).length < kinds) {
     const f = pool[Math.floor(Math.random() * pool.length)];
-    if (!need[f.id]) need[f.id] = first ? 2 : 2 + Math.floor(Math.random() * 3);
+    if (!need[f.id]) need[f.id] = first ? 2 : type === 'big' ? 6 + Math.floor(Math.random() * 3) : type === 'mix' ? 4 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 3);
   }
   let v = 0; for (const id in need) v += need[id] * flowerPrice(id);
-  return { need, coins: Math.max(10, Math.round(v / 5) * 5), id: Date.now() + Math.random(), say: orderLine() };
+  const mult = type === 'big' ? RULES.bigOrderMult : type === 'mix' ? RULES.mixOrderMult : 1;
+  const o = { need, coins: Math.max(10, Math.round(v * mult / 5) * 5), id: Date.now() + Math.random(), say: orderLine() };
+  if (type !== 'normal') o.tag = type === 'big' ? '큰 주문' : '모둠 주문';
+  return o;
 }
 // 꽃 한 송이 값: 자라는 시간이 길수록 비쌈
 function flowerPrice(id) { const f = FLOWER[id]; return 5 + Math.round((f.grow[0] + f.grow[1]) * 2); }
@@ -48,7 +53,10 @@ function refreshOrders() {
     if (!locked || canDeliver(o)) return o;
     add = true; return makeOrder();
   });
-  while (S.orders.length < RULES.orderSlots && S.doneToday + S.orders.length < ordersMax() && now >= (S.nextOrderAt || 0)) { S.orders.push(makeOrder()); S.nextOrderAt = now + orderGapMin() * MIN; add = true; }
+  // 의뢰는 쌓임: 자리를 비운 동안 지나간 시간만큼 (간격마다 1건씩) 게시판 칸이 찰 때까지 한꺼번에 들어옴
+  let t = S.nextOrderAt || now;
+  while (S.orders.length < RULES.orderSlots && S.doneToday + S.orders.length < ordersMax() && now >= t) { S.orders.push(makeOrder()); t += orderGapMin() * MIN; add = true; }
+  if (add || !S.nextOrderAt) S.nextOrderAt = t;
   if (add) { save(); G.dirty = true; }
   refreshSpecial(); maybeHintMail();
 }
@@ -70,9 +78,11 @@ function openOrders() {
       this.btns = [];
       const list = G.S.orders;
       if (!list.length) { text(G.S.doneToday >= ordersMax() ? '오늘 의뢰는 모두 끝났어요. 내일 새 의뢰가 와요.' : `새 의뢰를 기다리는 중이에요. (${Math.max(1, Math.ceil(((G.S.nextOrderAt || 0) - Date.now()) / MIN))}분 뒤)`, r[0] + r[2] / 2, r[1] + r[3] / 2, 40, '#8a6a44', 'center'); return; }
-      const rows = gridRects(r, 1, RULES.orderSlots, 26);
+      // 한 화면에 3칸 크기로 보이고, 의뢰가 더 많으면 밀어서 봄
+      const GAP = 26, RH = (r[3] - GAP * 2) / 3, total = list.length * RH + (list.length - 1) * GAP;
+      scrollBegin(this, r, total);
       list.forEach((o, i) => {
-        const rc = rows[i], ok = canDeliver(o); card(rc, ok);
+        const rc = [r[0], r[1] + i * (RH + GAP), r[2], RH], ok = canDeliver(o); card(rc, ok);
         const [x, y, w, h] = rc; let cx = x + 40;
         if (!o.say) o.say = orderLine();
         const ls = G.mode === 'pad' ? 26 : 28; text(o.say, x + 30, y + ls * .95, ls, '#8a6a44', 'left', false, 500);
@@ -88,10 +98,12 @@ function openOrders() {
           }
         }
         drawCoin(x + w - 350, y + h / 2, 22); text(`+${o.coins}`, x + w - 318, y + h / 2 + 2, 42, '#b07a12');
+        if (o.tag) text(o.tag, x + w - 225, y + ls * .95, ls, '#c0522c', 'right', false, 700);        // 큰 주문 / 모둠 주문 표시
         const br = [x + w - 200, y + h / 2 - 60, 170, 120];
         button(br, '납품', { disabled: !ok, size: 42 });
-        this.btns.push({ rect: br, disabled: !ok, fn: () => deliver(o) });
+        const hit = scrollHit(this, r, br); if (hit) this.btns.push({ rect: hit, disabled: !ok, fn: () => deliver(o) });
       });
+      scrollEnd(this, r);
     },
   });
 }
