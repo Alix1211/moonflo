@@ -34,20 +34,24 @@
 <canvas id="bgfill" width="96" height="96" style="position:fixed;left:-4vmax;top:-4vmax;width:calc(100vw + 8vmax);height:calc(100vh + 8vmax);filter:blur(10px);pointer-events:none"></canvas>
 <canvas id="game"></canvas>
 <div id="loading"><img id="logo" src="img/ui_logo.png" alt="문플로 · 달의 플로리스트"><div id="barw"><img src="img/ui_bar0.png" alt=""><img id="bar1" src="img/ui_bar1.png" alt=""></div><div id="rem"></div><div id="hint">꽃을 준비하고 있어요</div></div>
-<script src="js/data.js"></script>
-<script src="js/core.js"></script>
-<script src="js/misc.js"></script>
-<script src="js/shop.js"></script>
-<script src="js/garden.js"></script>
-<script src="js/greenhouse.js"></script>
-<script src="js/lab.js"></script>
-<script src="js/room.js"></script>
-<script src="js/health.js"></script>
-<script src="js/backup.js"></script>
-<script src="js/mailsync.js"></script>
-<script src="js/sfx.js"></script>
-<script src="js/notify.js"></script>
-<script src="js/buddy.js"></script>
+<script>
+  // 새 버전이 바로 오도록: 시작할 때 최신 버전 번호를 캐시 없이 먼저 확인하고, 그 번호를 붙여 게임 파일을 받음
+  (function () {
+    var files = ['data','core','misc','shop','garden','greenhouse','lab','room','health','backup','mailsync','sfx','notify','buddy'], done = false;
+    function boot(v) {
+      if (done) return; done = true; var i = 0;
+      (function next() {
+        if (i >= files.length) return window.__startGame && window.__startGame();
+        var s = document.createElement('script'); s.src = 'js/' + files[i++] + '.js?v=' + encodeURIComponent(v);
+        s.onload = next; s.onerror = function () { if (window.__dbg) window.__dbg('LOAD ' + s.src); next(); };
+        document.body.appendChild(s);
+      })();
+    }
+    try { fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) { boot((t || '').trim() || Date.now()); }, function () { boot(Date.now()); }); }
+    catch (e) { boot(Date.now()); }
+    setTimeout(function () { boot(Date.now()); }, 5000);
+  })();
+</script>
 <script>
   // 시작할 때: 다른 기기에서 더 최근에 저장한 진행이 있으면 물어봄 (없으면 그냥 시작)
   function askRemote() {
@@ -73,7 +77,7 @@
       try { FarmBridge.checkRemote(); } catch (e) { fin(); }
     });
   }
-  loadImages(p => { document.getElementById('bar1').style.clipPath = 'inset(0 ' + (100 - (20 + p * 71)).toFixed(1) + '% 0 0)'; }).then(askRemote).then(start).catch(function(e){window.__dbg('START '+(e&&e.stack||e));});
+  window.__startGame = function () { loadImages(p => { document.getElementById('bar1').style.clipPath = 'inset(0 ' + (100 - (20 + p * 71)).toFixed(1) + '% 0 0)'; }).then(askRemote).then(start).catch(function(e){window.__dbg('START '+(e&&e.stack||e));}); };
 </script>
 </body>
 </html>
