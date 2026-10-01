@@ -11,9 +11,25 @@ function makeOrder() {
     const f = pool[Math.floor(Math.random() * pool.length)];
     if (!need[f.id]) need[f.id] = first ? 2 : 2 + Math.floor(Math.random() * 3);
   }
-  let v = 0; for (const id in need) v += need[id] * (FLOWER[id].grow[0] + FLOWER[id].grow[1]);
-  return { need, coins: Math.max(3, Math.round(v / 6)) * 10, id: Date.now() + Math.random() };
+  let v = 0; for (const id in need) v += need[id] * flowerPrice(id);
+  return { need, coins: Math.max(10, Math.round(v / 5) * 5), id: Date.now() + Math.random(), say: orderLine() };
 }
+// 꽃 한 송이 값: 자라는 시간이 길수록 비쌈
+function flowerPrice(id) { const f = FLOWER[id]; return 5 + Math.round((f.grow[0] + f.grow[1]) * 2); }
+// 일반 의뢰 사연 (어디서 왜 주문했는지 한 줄)
+const ORDER_LINES = [
+  '동네 꽃집 「봄날」에서 주문이 들어왔어요.', '다음 주에 작은 결혼식이 있대요. 부케에 쓸 꽃이래요.', '시장 떡집 사장님이 개업 3주년 화분을 부탁하셨어요.',
+  '초등학교 선생님이 교실 창가에 둘 꽃을 찾으세요.', '옆 마을 카페에서 테이블 꽃을 주문했어요.', '할머니 생신 잔치에 쓸 꽃이래요.',
+  '병원 로비에 둘 꽃을 부탁받았어요.', '주말 플리마켓에 내놓을 꽃이 필요하대요.', '동네 도서관에서 열람실을 꾸민대요.',
+  '첫 데이트에 들고 갈 꽃을 찾는 청년이 있어요.', '빵집 진열대 옆에 둘 꽃을 주문했어요.', '이사 온 이웃이 집들이 꽃을 부탁했어요.',
+  '유치원 졸업식 꽃다발 주문이에요.', '사진관에서 가족사진 배경에 쓸 꽃이래요.', '동네 미용실이 새 단장을 했대요.',
+  '교회 주일 강단 꽃 주문이 들어왔어요.', '작은 음악회 무대를 꾸민대요.', '은퇴하시는 우체국장님께 드릴 꽃이래요.',
+  '꽃꽂이 교실에서 수업용 꽃을 찾아요.', '식당 창가 자리에 둘 꽃을 부탁했어요.', '돌잔치 테이블 장식 주문이에요.',
+  '요양원 어르신들 방에 둘 꽃이래요.', '동창회 모임 자리에 놓을 꽃이에요.', '마을 축제 포토존을 꾸민대요.',
+  '꽃집 「달빛 꽃방」에서 급하게 연락이 왔어요.', '오랜만에 고향에 오는 딸을 위한 꽃이래요.', '결혼기념일 깜짝 선물이래요. 비밀이에요!',
+  '새로 연 서점 입구를 꾸민대요.', '병문안 갈 때 들고 갈 꽃이래요.', '동네 공방에서 드라이플라워를 만든대요.',
+];
+const orderLine = () => ORDER_LINES[Math.floor(Math.random() * ORDER_LINES.length)];
 const ordersMax = () => RULES.ordersPerDay;
 const orderGapMin = () => RULES.orderGapMin[Math.min(G.S.beds.length, RULES.orderGapMin.length) - 1];   // 화단이 늘수록 새 의뢰가 더 자주 옴
 function refreshOrders() {
@@ -46,12 +62,18 @@ function openOrders() {
       list.forEach((o, i) => {
         const rc = rows[i], ok = canDeliver(o); card(rc, ok);
         const [x, y, w, h] = rc; let cx = x + 40;
-        const s = Math.min(h * .72, 130);
+        if (!o.say) o.say = orderLine();
+        const ls = G.mode === 'pad' ? 26 : 28; text(o.say, x + 30, y + ls * .95, ls, '#8a6a44', 'left', false, 500);
+        const pdm = G.mode === 'pad', s = pdm ? Math.min(h * .6, 100) : Math.min(h * .52, 110);
         for (const id in o.need) {
-          imgFit(G.img[`flower_${id}_bloom`], cx + s / 2, y + h / 2 - 10, s);
-          const have = G.S.flowers[id];
-          text(`${FLOWER[id].name} ${Math.min(have, o.need[id])}/${o.need[id]}`, cx + s / 2, y + h - 30, 30, have >= o.need[id] ? '#4f7d2c' : '#8a6a44', 'center');
-          cx += s + 60;
+          const have = G.S.flowers[id], lab = `${FLOWER[id].name} ${Math.min(have, o.need[id])}/${o.need[id]}`, col = have >= o.need[id] ? '#4f7d2c' : '#8a6a44';
+          if (pdm) {                                   // 패드: 그림 오른쪽에 이름 (세로 공간이 좁아서)
+            imgFit(G.img[`flower_${id}_bloom`], cx + s / 2, y + h * .6, s);
+            text(lab, cx + s + 8, y + h * .62, 30, col, 'left'); ctx.font = font(30); cx += s + 30 + ctx.measureText(lab).width;
+          } else {
+            imgFit(G.img[`flower_${id}_bloom`], cx + s / 2, y + h * .56 - 10, s);
+            text(lab, cx + s / 2, y + h - 30, 30, col, 'center'); cx += s + 60;
+          }
         }
         drawCoin(x + w - 350, y + h / 2, 22); text(`+${o.coins}`, x + w - 318, y + h / 2 + 2, 42, '#b07a12');
         const br = [x + w - 200, y + h / 2 - 60, 170, 120];
@@ -174,8 +196,8 @@ function claimGift(mail) {
 }
 
 /* ---------- 모래시계: 인벤토리에 모아 두었다가 원할 때 사용 ---------- */
-const HG = [{ id: 'hg_10', min: 10, name: '모래시계 10분', cost: 5 }, { id: 'hg_30', min: 30, name: '모래시계 30분', cost: 12 },
-            { id: 'hg_60', min: 60, name: '모래시계 1시간', cost: 20 }, { id: 'hg_360', min: 360, name: '모래시계 6시간', cost: 100 }];
+const HG = [{ id: 'hg_10', min: 10, name: '모래시계 10분', cost: 3 }, { id: 'hg_30', min: 30, name: '모래시계 30분', cost: 6 },
+            { id: 'hg_60', min: 60, name: '모래시계 1시간', cost: 10 }, { id: 'hg_360', min: 360, name: '모래시계 6시간', cost: 50 }];
 const itemCount = id => (G.S.items && G.S.items[id]) || 0;
 function addItem(id, n) { G.S.items = G.S.items || {}; G.S.items[id] = itemCount(id) + n; }
 function useHourglass(h) {

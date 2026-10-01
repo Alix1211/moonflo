@@ -4,18 +4,18 @@ const MIN = 60 * 1000;
 
 // 꽃: 단계별 자라는 시간(분) = 씨앗→싹, 싹→꽃. 물을 줘야 시간이 흐름.
 const FLOWERS = [
-  { id: 'tulip',     name: '튤립',     grow: [3, 3],   color: '#e8505b' },
-  { id: 'daisy',     name: '데이지',   grow: [4, 4],   color: '#f3efe2' },
-  { id: 'sunflower', name: '해바라기', grow: [6, 6],   color: '#f5b82e' },
-  { id: 'lavender',  name: '라벤더',   grow: [8, 8],   color: '#8f6bd6' },
-  { id: 'rose',      name: '장미',     grow: [10, 10], color: '#ea6f93' },
-  { id: 'hydrangea', name: '수국',     grow: [15, 15], color: '#6f93e8' },
-  { id: 'cosmos',    name: '코스모스', grow: [25, 25], color: '#f26aa8' },
-  { id: 'freesia',   name: '프리지아', grow: [40, 40], color: '#f7d33a' },
-  { id: 'carnation', name: '카네이션', grow: [60, 60], color: '#e0355a' },
-  { id: 'peony',     name: '작약',     grow: [90, 90], color: '#f58fb8' },
-  { id: 'lily',      name: '백합',     grow: [120, 120], color: '#f4efe6' },
-  { id: 'camellia',  name: '동백',     grow: [180, 180], color: '#d8262f' },
+  { id: 'tulip',     name: '튤립',     grow: [0.5, 0.5],   color: '#e8505b' },
+  { id: 'daisy',     name: '데이지',   grow: [1, 1],   color: '#f3efe2' },
+  { id: 'sunflower', name: '해바라기', grow: [1.5, 1.5],   color: '#f5b82e' },
+  { id: 'lavender',  name: '라벤더',   grow: [2, 2],   color: '#8f6bd6' },
+  { id: 'rose',      name: '장미',     grow: [3, 3], color: '#ea6f93' },
+  { id: 'hydrangea', name: '수국',     grow: [5, 5], color: '#6f93e8' },
+  { id: 'cosmos',    name: '코스모스', grow: [8, 8], color: '#f26aa8' },
+  { id: 'freesia',   name: '프리지아', grow: [12, 12], color: '#f7d33a' },
+  { id: 'carnation', name: '카네이션', grow: [18, 18], color: '#e0355a' },
+  { id: 'peony',     name: '작약',     grow: [25, 25], color: '#f58fb8' },
+  { id: 'lily',      name: '백합',     grow: [35, 35], color: '#f4efe6' },
+  { id: 'camellia',  name: '동백',     grow: [50, 50], color: '#d8262f' },
 ];
 const FLOWER = Object.fromEntries(FLOWERS.map(f => [f.id, f]));
 
@@ -26,12 +26,12 @@ const RULES = {
   comboMax: 4,             // 연속 터짐(콤보) 점수 배수 상한: 2콤보 x2, 3콤보 x3, 4콤보 이상 x4
   harvestYield: 1,         // 꽃 1송이 수확
   specialResearch: 3,      // 특수블록 1번 쓸 때 연구포인트
-  ordersPerDay: 10,        // 하루 의뢰 최대
-  orderGapMin: [60, 52, 45, 38, 30],   // 새 의뢰가 오는 간격(분): 화단 1~5개일 때
+  ordersPerDay: 40,        // 하루 의뢰 최대
+  orderGapMin: [6, 5, 4, 3.5, 3],      // 새 의뢰가 오는 간격(분): 화단 1~5개일 때
   orderSlots: 3,           // 게시판 동시 의뢰 수
   fairyEveryMin: 20,       // 시간의 요정 등장 간격(분, 실제로는 ±40% 무작위)
   fairyStaySec: 40,        // 하늘을 날아다니다 가 버리기까지(초)
-  fairySkipMin: 5,         // 요정이 당겨 주는 시간(분)
+  fairySkipMin: 2,         // 요정이 당겨 주는 시간(분)
   // 다이아는 건강 기록으로만 얻음 (하루 횟수 제한). 배변 기록은 보상 없음(스트레스 방지).
   diaRewards: { med: { perDay: 3, dia: 1, label: '약 챙기기' }, bp: { perDay: 1, dia: 1, label: '혈압 재기' }, exercise: { perDay: 1, dia: 1, label: '운동' } },
   // 다이아 얻는 길 (임시 숫자): 출석 · 오늘의 미션 · 시간의 요정
@@ -95,58 +95,58 @@ const BTN_LABEL = {
 
 // 쇼핑 편지: 돈이 trigger 이상 모이면 우체통에 도착. 편지 안에서 cost만큼 내고 구매. (숫자는 임시)
 const SHOP_MAILS = [
-  { id: 'bed2', trigger: 500, cost: 500, from: '정원 가꾸기 모임', requires: null,
+  { id: 'bed2', trigger: 250, cost: 250, from: '정원 가꾸기 모임', requires: null,
     body: '정원 한쪽에 빈 땅이 생겼어요.\n화단을 하나 더 만들어 볼까요?\n꽃을 더 많이 키울 수 있어요.',
     item: { kind: 'bed', name: '화단 (2번째)' } },
-  { id: 'bed3', trigger: 1200, cost: 1200, from: '정원 가꾸기 모임', requires: 'bed2',
+  { id: 'bed3', trigger: 600, cost: 600, from: '정원 가꾸기 모임', requires: 'bed2',
     body: '정원이 잘 가꿔지고 있네요.\n옆에 화단을 하나 더 만들 수 있어요.',
     item: { kind: 'bed', name: '화단 (3번째)' } },
-  { id: 'bed4', trigger: 3000, cost: 3000, from: '정원 가꾸기 모임', requires: 'bed3',
+  { id: 'bed4', trigger: 1500, cost: 1500, from: '정원 가꾸기 모임', requires: 'bed3',
     body: '꽃이 이렇게 많아지다니 대단해요.\n넉넉한 땅을 한 자리 더 드릴게요.',
     item: { kind: 'bed', name: '화단 (4번째)' } },
-  { id: 'bed5', trigger: 6000, cost: 6000, from: '정원 가꾸기 모임', requires: 'bed4',
+  { id: 'bed5', trigger: 3000, cost: 3000, from: '정원 가꾸기 모임', requires: 'bed4',
     body: '이제 정원이 꽃밭이 다 되었네요.\n마지막으로 화단 하나를 더 만들어 드릴게요.',
     item: { kind: 'bed', name: '화단 (5번째)' } },
-  { id: 'can2', trigger: 300, cost: 300, from: '원예용품점', requires: null,
+  { id: 'can2', trigger: 150, cost: 150, from: '원예용품점', requires: null,
     body: '안녕하세요, 원예용품점이에요.\n한 번에 두 칸에 물을 주는 조리개가 새로 들어왔어요.\n이걸 쓰면 손가락으로 쓸어서 여러 칸에 물을 줄 수도 있어요.',
     item: { kind: 'can', v: 2, name: '물조리개 (2칸)' } },
-  { id: 'outfit1', trigger: 500, cost: 500, from: '옷가게', requires: null,
+  { id: 'outfit1', trigger: 250, cost: 250, from: '옷가게', requires: null,
     body: '정원에서 입기 좋은 새 옷이 도착했어요.\n달해에게 잘 어울릴 것 같아요.',
     item: { kind: 'outfit', name: '정원 앞치마' } },
-  { id: 'glove2', trigger: 400, cost: 400, from: '원예용품점', requires: null,
+  { id: 'glove2', trigger: 200, cost: 200, from: '원예용품점', requires: null,
     body: '수확할 때 두 송이를 한 번에 거두는 장갑이에요.\n이걸 끼면 손가락으로 쓸어서 여러 송이를 거둘 수도 있어요.',
     item: { kind: 'glove', v: 2, name: '수확 장갑 (2칸)' } },
-  { id: 'can4', trigger: 3000, cost: 3000, from: '원예용품점', requires: 'can2',
+  { id: 'can4', trigger: 1500, cost: 1500, from: '원예용품점', requires: 'can2',
     body: '이번엔 네 칸에 한꺼번에 물을 주는 큰 조리개예요.\n화단 하나가 금방 촉촉해져요.',
     item: { kind: 'can', v: 4, name: '물조리개 (4칸)' } },
-  { id: 'glove4', trigger: 3500, cost: 3500, from: '원예용품점', requires: 'glove2',
+  { id: 'glove4', trigger: 1750, cost: 1750, from: '원예용품점', requires: 'glove2',
     body: '이번엔 네 송이를 한꺼번에 거두는 큰 장갑이에요.',
     item: { kind: 'glove', v: 4, name: '수확 장갑 (4칸)' } },
-  { id: 'outfit2', trigger: 4000, cost: 4000, from: '옷가게', requires: 'outfit1',
+  { id: 'outfit2', trigger: 2000, cost: 2000, from: '옷가게', requires: 'outfit1',
     body: '봄꽃 무늬 원피스가 나왔어요.\n꽃 정원에 딱 어울려요.',
     item: { kind: 'outfit', name: '꽃무늬 원피스' } },
 ];
 
 // 꾸미기 소품 (상점에서 돈으로 구매, 가격은 임시). place: garden 정원 / room 방 / gh 온실, wall: 벽에 거는 물건
 const PROPS = [
-  { id: 'g1', place: 'garden', name: '분수', cost: 8750 }, { id: 'g2', place: 'garden', name: '나무 벤치', cost: 1450 },
-  { id: 'g3', place: 'garden', name: '튤립 화분', cost: 400 }, { id: 'g4', place: 'garden', name: '튤립 나무통', cost: 550 },
-  { id: 'g5', place: 'garden', name: '물조리개 화분', cost: 450 }, { id: 'g6', place: 'garden', name: '꽃등 가로등', cost: 1200 },
-  { id: 'g7', place: 'garden', name: '풍차', cost: 6000, sc: 1.7 }, { id: 'g8', place: 'garden', name: '새집', cost: 750 },
-  { id: 'g10', place: 'garden', name: '나비 조각', cost: 2650 },
-  { id: 'g11', place: 'garden', name: '토끼 조각', cost: 2000 }, { id: 'g12', place: 'garden', name: '나무 울타리', cost: 950 },
-  { id: 'r1', place: 'room', name: '꽃무늬 러그', cost: 1700 }, { id: 'r2', place: 'room', name: '스탠드', cost: 1200 },
-  { id: 'r3', place: 'room', name: '책장', cost: 3750 }, { id: 'r4', place: 'room', name: '쿠션', cost: 550 },
-  { id: 'r5', place: 'room', name: '토끼 인형', cost: 1450 }, { id: 'r6', place: 'room', name: '꽃 화병', cost: 450 },
-  { id: 'r7', place: 'room', name: '리본 물조리개', cost: 750 }, { id: 'r8', place: 'room', name: '꽃 액자', cost: 950, wall: true },
-  { id: 'r9', place: 'room', name: '티 트레이', cost: 650 }, { id: 'r10', place: 'room', name: '벽시계', cost: 2650, wall: true },
-  { id: 'r11', place: 'room', name: '고양이 방석', cost: 2000 }, { id: 'r12', place: 'room', name: '바구니 화분', cost: 550 },
-  { id: 'h1', place: 'gh', name: '걸이 화분', cost: 550 }, { id: 'h2', place: 'gh', name: '사다리 선반', cost: 2650 },
-  { id: 'h3', place: 'gh', name: '물조리개 탁자', cost: 1200 }, { id: 'h4', place: 'gh', name: '유리 온실 상자', cost: 3750 },
-  { id: 'h5', place: 'gh', name: '나비 장식', cost: 1450 }, { id: 'h6', place: 'gh', name: '전구 줄', cost: 950 },
-  { id: 'h7', place: 'gh', name: '새장', cost: 2000 }, { id: 'h8', place: 'gh', name: '꽃 벤치', cost: 1700 },
-  { id: 'h9', place: 'gh', name: '꽃 아치', cost: 6000 }, { id: 'h11', place: 'gh', name: '나무 물통', cost: 650 },
-  { id: 'h12', place: 'gh', name: '돌 화분', cost: 750 },
+  { id: 'g1', place: 'garden', name: '분수', cost: 4380 }, { id: 'g2', place: 'garden', name: '나무 벤치', cost: 720 },
+  { id: 'g3', place: 'garden', name: '튤립 화분', cost: 200 }, { id: 'g4', place: 'garden', name: '튤립 나무통', cost: 280 },
+  { id: 'g5', place: 'garden', name: '물조리개 화분', cost: 220 }, { id: 'g6', place: 'garden', name: '꽃등 가로등', cost: 600 },
+  { id: 'g7', place: 'garden', name: '풍차', cost: 3000, sc: 1.7 }, { id: 'g8', place: 'garden', name: '새집', cost: 380 },
+  { id: 'g10', place: 'garden', name: '나비 조각', cost: 1320 },
+  { id: 'g11', place: 'garden', name: '토끼 조각', cost: 1000 }, { id: 'g12', place: 'garden', name: '나무 울타리', cost: 480 },
+  { id: 'r1', place: 'room', name: '꽃무늬 러그', cost: 850 }, { id: 'r2', place: 'room', name: '스탠드', cost: 600 },
+  { id: 'r3', place: 'room', name: '책장', cost: 1880 }, { id: 'r4', place: 'room', name: '쿠션', cost: 280 },
+  { id: 'r5', place: 'room', name: '토끼 인형', cost: 720 }, { id: 'r6', place: 'room', name: '꽃 화병', cost: 220 },
+  { id: 'r7', place: 'room', name: '리본 물조리개', cost: 380 }, { id: 'r8', place: 'room', name: '꽃 액자', cost: 480, wall: true },
+  { id: 'r9', place: 'room', name: '티 트레이', cost: 320 }, { id: 'r10', place: 'room', name: '벽시계', cost: 1320, wall: true },
+  { id: 'r11', place: 'room', name: '고양이 방석', cost: 1000 }, { id: 'r12', place: 'room', name: '바구니 화분', cost: 280 },
+  { id: 'h1', place: 'gh', name: '걸이 화분', cost: 280 }, { id: 'h2', place: 'gh', name: '사다리 선반', cost: 1320 },
+  { id: 'h3', place: 'gh', name: '물조리개 탁자', cost: 600 }, { id: 'h4', place: 'gh', name: '유리 온실 상자', cost: 1880 },
+  { id: 'h5', place: 'gh', name: '나비 장식', cost: 720 }, { id: 'h6', place: 'gh', name: '전구 줄', cost: 480 },
+  { id: 'h7', place: 'gh', name: '새장', cost: 1000 }, { id: 'h8', place: 'gh', name: '꽃 벤치', cost: 850 },
+  { id: 'h9', place: 'gh', name: '꽃 아치', cost: 3000 }, { id: 'h11', place: 'gh', name: '나무 물통', cost: 320 },
+  { id: 'h12', place: 'gh', name: '돌 화분', cost: 380 },
 ];
 const PROP = Object.fromEntries(PROPS.map(p => [p.id, p]));
 // 자리: 곳마다 자리 수는 같고(산 소품이 그 자리에 놓임), 기기별로 좌표만 다름. a 'b' = 바닥(발 기준), 'c' = 가운데(벽·매달림)
@@ -258,7 +258,7 @@ const SPECIAL_STORY = {
 /* 밭 수에 따라 열리는 꽃 종류: 1밭 6종 → 2밭 8종 → 3밭 9종 → 4밭 10종 → 5밭(마지막) 12종 */
 const OPEN_BY_BEDS = [6, 8, 9, 10, 12];
 const openKinds = () => Math.min(FLOWERS.length, OPEN_BY_BEDS[Math.min(G.S.beds.length, OPEN_BY_BEDS.length) - 1]);
-const FUTURE_GROW = { cosmos: [25, 25], freesia: [40, 40], carnation: [60, 60], peony: [90, 90], lily: [120, 120], camellia: [180, 180] };
+const FUTURE_GROW = { cosmos: [8, 8], freesia: [12, 12], carnation: [18, 18], peony: [25, 25], lily: [35, 35], camellia: [50, 50] };
 Object.assign(RULES, {
   mailUrl: 'https://script.google.com/macros/s/AKfycbwH0L7DihvS7wDojN2m4e2HcA_7zfCuRnvgXTZpZmeueK_G5b3C--L-ZKfXXginzIc4/exec',              // 구글 시트 편지함 주소 (Apps Script 웹 앱 주소)
   mailFrom: '달해',         // 답장에 적히는 보낸 사람

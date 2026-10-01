@@ -212,6 +212,7 @@ function inRect(p, r) { return r && p.x >= r[0] && p.x <= r[0] + r[2] && p.y >= 
 function toast(msg, ms = 2200) { G.toast = { msg, until: Date.now() + ms }; G.dirty = true; }
 function floatText(msg, x, y, color = '#fff') { G.floats.push({ msg, x, y, color, t0: Date.now() }); }
 function fmtLeft(ms) {
+  if (ms < MIN) return `${Math.max(1, Math.ceil(ms / 1000))}초`;
   const m = Math.ceil(ms / MIN); if (m < 60) return `${m}분`;
   return `${Math.floor(m / 60)}시간 ${m % 60 ? (m % 60) + '분' : ''}`.trim();
 }
