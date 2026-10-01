@@ -434,9 +434,10 @@ function frame() {
 function frame0() {
   const scr = G.screens[G.screen];
   const busy = (scr.busy && scr.busy()) || G.floats.length || (G.toast && G.toast.until > Date.now()) || (typeof buddyBusy === 'function' && buddyBusy());
-  if (!G.dirty && !busy) return;
+  const slow = !busy && scr.slow && scr.slow();
+  if (!G.dirty && !busy && !slow) return;
   const nw = Date.now();
-  if (!G.dirty && nw - (G._lastDraw || 0) < 28) return;   // 움직임만 있는 장면은 초당 약 30번
+  if (!G.dirty && nw - (G._lastDraw || 0) < (busy ? 28 : 100)) return;   // 움직임은 초당 약 30번, 반짝임만 있으면 초당 10번
   G._lastDraw = nw;
   G.dirty = false; G.now = nw;
   ctx.setTransform(cv.width / G.L.W, 0, 0, cv.height / G.L.H, 0, 0);

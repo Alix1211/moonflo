@@ -368,7 +368,8 @@
   const scr = G.screens.greenhouse = {
     onEnter() { newKinds(); if (!st.g) loadBoard(); },      // 들어올 때마다 처음 꽃 자리를 새로 뽑음 (새로 열린 꽃은 항상, 깔린 칩은 그대로)
     onMode() { st.bg = null; },
-    busy: () => !!st.anim || st.fx.length > 0 || !!st.hint || !!st.sel || !!(st.g && st.g.some(r => r.some(x => x && x.sp))),
+    busy: () => !!st.anim || st.fx.length > 0 || !!st.hint || !!st.sel,
+    slow: () => !!(st.g && st.g.some(r => r.some(x => x && x.sp))),      // 가만히 있을 때 특수탄 반짝임만: 초당 10번
     draw() {
       if (!st.g) loadBoard();
       stepAnim();
@@ -388,14 +389,11 @@
         ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.stroke();
         const s = cellSize();
         for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
-          const x0 = cellXY(r, c); rrect(x0[0] + 4, x0[1] + 4, s - 8, s - 8, 22); ctx.fillStyle = (r + c) % 2 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.28)'; ctx.fill();
+          const x0 = cellXY(r, c); rrect(x0[0] + 4, x0[1] + 4, s - 8, s - 8, 22); ctx.fillStyle = (r + c) % 2 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.28)'; ctx.fill(); ctx.fill();   // 두 번 칠해야 예전 모양과 같음
         }
       });
       const [bx, by, bw, bh] = board();
       const s = cellSize(), now = Date.now(), a = st.anim;
-      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
-        const x0 = cellXY(r, c); rrect(x0[0] + 4, x0[1] + 4, s - 8, s - 8, 22); ctx.fillStyle = (r + c) % 2 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.28)'; ctx.fill();
-      }
       ctx.save(); if (a) { rrect(bx, by, bw, bh, 40); ctx.clip(); }   // 움직일 때만 판 밖을 잘라냄
       for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
         const x = st.g[r][c]; if (!x) continue;
