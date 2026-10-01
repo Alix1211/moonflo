@@ -368,7 +368,7 @@
   }
 
   const scr = G.screens.greenhouse = {
-    onEnter() { if (!st.g) loadBoard(); },
+    onEnter() { newKinds(); if (!st.g) loadBoard(); },      // 들어올 때마다 처음 꽃 자리를 새로 뽑음 (새로 열린 꽃은 항상, 깔린 칩은 그대로)
     onMode() { st.bg = null; },
     busy: () => !!st.anim || st.fx.length > 0 || !!st.hint || !!st.sel || !!(st.g && st.g.some(r => r.some(x => x && x.sp))),
     draw() {
