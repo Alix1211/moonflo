@@ -7,20 +7,18 @@
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const range = (a, b) => Array.from({ length: Math.max(0, b - a) }, (_, i) => a + i);
   const neededIdx = () => { const s = new Set(); for (const o of (G.S.orders || [])) for (const id in o.need) { const i = FLOWERS.findIndex(f => f.id === id); if (i >= 0 && i < openKinds()) s.add(i); } return [...s]; };
-  function pickKinds(keep) {                          // keep: 이미 판에 있던 꽃(있으면 가능한 그대로 둠)
-    const base = RULES.matchKinds, open = openKinds(), news = range(base, open).slice(0, base), slots = base - news.length;
-    const nd = neededIdx().filter(i => i < base), first = range(0, Math.min(base, open));
-    const kept = keep ? shuffle(keep.filter(i => i < base && !nd.includes(i))) : [], others = shuffle(first.filter(i => !nd.includes(i) && !kept.includes(i)));
-    return news.concat(shuffle(nd.slice()).concat(kept, others).slice(0, slots)).sort((x, y) => x - y);
+  function pickKinds() {                              // 의뢰에 필요한 꽃 먼저, 나머지는 열린 꽃 전체에서 무작위
+    const base = RULES.matchKinds, open = openKinds(), nd = shuffle(neededIdx()).slice(0, base);
+    const rest = shuffle(range(0, open).filter(i => !nd.includes(i)));
+    return nd.concat(rest).slice(0, Math.min(base, open)).sort((x, y) => x - y);
   }
   const kinds = () => {
-    const S = G.S, open = openKinds(), news = range(RULES.matchKinds, open).slice(0, RULES.matchKinds);
-    if (!S.kinds || S.kinds.length !== RULES.matchKinds || S.kinds.some(i => i >= open)) newKinds();
-    else if (!news.every(i => S.kinds.includes(i))) S.kinds = pickKinds(S.kinds);       // 새 꽃이 빠져 있으면 (밭 구매·예전 저장) 새 꽃을 넣고 처음 꽃 중에서 뺌
-    S.kindsOpen = open; return S.kinds;
+    const S = G.S, open = openKinds();
+    if (!S.kinds || S.kinds.length !== Math.min(RULES.matchKinds, open) || S.kinds.some(i => i >= open) || S.kindsOpen !== open) newKinds();
+    return S.kinds;
   };
   const rk = () => kinds()[Math.floor(Math.random() * kinds().length)];
-  const newKinds = () => { G.S.kinds = pickKinds(null); G.S.kindsOpen = openKinds(); };       // 새로 섞을 때: 열린 새 꽃은 꼭 들어가고, 처음 꽃은 무작위
+  const newKinds = () => { G.S.kinds = pickKinds(); G.S.kindsOpen = openKinds(); };       // 새로 섞을 때: 열린 새 꽃은 꼭 들어가고, 처음 꽃은 무작위
   const st = { g: null, sel: null, press: null, anim: null, hint: null, bg: null, bgMode: '' }; G._gh = { st, trySwap, kinds, newKinds, tile: (t, sp) => tile(t, sp) };
   let uid = 1;
   // 테스트용: 새로 생기는 칩 중 이 비율만큼 특수탄으로 나옴 (테스트 끝나면 0으로)
