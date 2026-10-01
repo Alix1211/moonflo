@@ -404,13 +404,24 @@ function openSeedPicker() {
     title: '지금 심을 씨앗',
     draw(r) {
       const pad = G.mode === 'pad', cols = pad ? 3 : 2, gap = 24, ch = pad ? 288 : 504;
-      const items = FLOWERS.slice(0, openKinds()).concat(SPECIALS.filter(s => (G.S.sseeds || {})[s.id] > 0).map(s => ({ id: s.id, name: s.name })));
+      const items = FLOWERS.slice(0, openKinds()).concat(SPECIALS.filter(s => (G.S.sseeds || {})[s.id] > 0).map(s => ({ id: s.id, name: s.name })))
+        .concat(FLOWERS.slice(openKinds()).map(f => ({ id: f.id, name: f.name, locked: true })));   // 아직 안 열린 꽃은 흐리게 보여 주고, 누르면 여는 법을 알려 줌
       const rows = Math.ceil(items.length / cols);
       this.btns = [];
       scrollBegin(this, r, rows * ch + (rows - 1) * gap);
       const cw = (r[2] - gap * (cols - 1)) / cols;
       items.forEach((f, i) => {
         const rc = [r[0] + (i % cols) * (cw + gap), r[1] + Math.floor(i / cols) * (ch + gap), cw, ch];
+        if (f.locked) {
+          const need = OPEN_BY_BEDS.findIndex(k => FLOWERS.findIndex(x => x.id === f.id) < k) + 1;
+          card(rc, false); ctx.globalAlpha = .35;
+          imgFit(G.img[`flower_${f.id}_bloom`], rc[0] + rc[2] / 2, rc[1] + rc[3] * .38, Math.min(rc[2], rc[3]) * .5); ctx.globalAlpha = 1;
+          text(f.name, rc[0] + rc[2] / 2, rc[1] + rc[3] * .75, 44, '#a8977f', 'center');
+          text(`🔒 화단 ${need}개`, rc[0] + rc[2] / 2, rc[1] + rc[3] * .9, 34, '#a8977f', 'center', false, 500);
+          const lh = scrollHit(this, r, rc);
+          if (lh) this.btns.push({ rect: lh, fn: () => toast(`${f.name}은(는) 화단이 ${need}개가 되면 열려요. 우체통 편지에서 화단을 살 수 있어요.`, 3800) });
+          return;
+        }
         const n = seedN(f.id), sel = G.S.cur === f.id;
         card(rc, sel);
         const s = Math.min(rc[2], rc[3]) * .5;
