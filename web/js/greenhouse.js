@@ -2,10 +2,25 @@
 'use strict';
 (() => {
   const N = 7;
-  const kinds = () => { const S = G.S; if (!S.kinds || S.kinds.length !== RULES.matchKinds || S.kinds.some(i => i >= openKinds())) newKinds(); return S.kinds; };
+  /* 퍼즐판 꽃 종류는 늘 matchKinds(6)종. 밭을 사서 새 꽃이 열리면 새 꽃이 판에 들어오고, 기존 꽃 중 같은 수만큼 무작위로 빠짐 → 난이도는 그대로 */
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const range = (a, b) => Array.from({ length: Math.max(0, b - a) }, (_, i) => a + i);
+  const newestTier = () => { const b = Math.min(G.S.beds.length, OPEN_BY_BEDS.length); return b < 2 ? [] : range(OPEN_BY_BEDS[b - 2], openKinds()); };   // 가장 최근 밭으로 새로 열린 꽃들
+  const kinds = () => {
+    const S = G.S, open = openKinds();
+    if (!S.kinds || S.kinds.length !== RULES.matchKinds || S.kinds.some(i => i >= open)) newKinds();
+    else if (S.kindsOpen !== undefined && S.kindsOpen < open) {                       // 밭을 사서 새 꽃이 열림: 새 꽃을 넣고, 기존 꽃 중 같은 수를 무작위로 뺌
+      const add = range(S.kindsOpen, open).filter(i => !S.kinds.includes(i));
+      S.kinds = shuffle(S.kinds.slice()).slice(add.length).concat(add).sort((x, y) => x - y);
+    }
+    S.kindsOpen = open; return S.kinds;
+  };
   const rk = () => kinds()[Math.floor(Math.random() * kinds().length)];
-  const newKinds = () => { const a = FLOWERS.slice(0, openKinds()).map((_, i) => i); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } G.S.kinds = a.slice(0, RULES.matchKinds).sort((x, y) => x - y); };
-  const st = { g: null, sel: null, press: null, anim: null, hint: null, bg: null, bgMode: '' }; G._gh = { st, trySwap, tile: (t, sp) => tile(t, sp) };
+  const newKinds = () => {                                                             // 새로 섞을 때도 가장 최근에 열린 꽃은 꼭 들어가고, 나머지는 무작위
+    const must = newestTier(), rest = shuffle(range(0, openKinds()).filter(i => !must.includes(i)));
+    G.S.kinds = must.concat(rest).slice(0, RULES.matchKinds).sort((x, y) => x - y); G.S.kindsOpen = openKinds();
+  };
+  const st = { g: null, sel: null, press: null, anim: null, hint: null, bg: null, bgMode: '' }; G._gh = { st, trySwap, kinds, newKinds, tile: (t, sp) => tile(t, sp) };
   let uid = 1;
   // 테스트용: 새로 생기는 칩 중 이 비율만큼 특수탄으로 나옴 (테스트 끝나면 0으로)
   const TEST_SP = 0, SPS = ['row', 'col', 'wideRow', 'wideCol', 'bomb'];
