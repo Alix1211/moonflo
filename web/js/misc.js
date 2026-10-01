@@ -224,6 +224,11 @@ function spOpen(sp) { const n = openKinds(); return sp.ing.every(t => { const [k
 function spMakeable(sp) { return sp.ing.every(t => { const [k, id] = t.split(':'); return k === 'sp' ? spMakeable(SPECIAL[id]) : !!FLOWER[id]; }); }
 function refreshSpecial() {
   const S = G.S, d = todayKey(), now = Date.now();
+  // 안 열린 꽃이 재료인 예전 특수 의뢰는 정리 (이미 그 꽃씨·꽃을 갖고 있거나 발견한 것이면 그대로 둠)
+  S.sseeds = S.sseeds || {}; S.sflowers = S.sflowers || {}; S.found = S.found || {};
+  const before = S.mails.length;
+  S.mails = S.mails.filter(m => !m.sorder || m.sorder.done || !SPECIAL[m.sorder.sp] || spOpen(SPECIAL[m.sorder.sp]) || S.found[m.sorder.sp] || (S.sseeds[m.sorder.sp] || 0) > 0 || (S.sflowers[m.sorder.sp] || 0) > 0);
+  if (S.mails.length !== before) { save(); G.dirty = true; }
   if (S.spDay !== d) { S.spDay = d; S.spCount = 0; S.nextSpAt = 0; }
   if (S.beds.length < RULES.specialFromBeds || S.spCount >= RULES.specialPerDay || now < (S.nextSpAt || 0)) return;
   const open = S.mails.filter(x => x.sorder && !x.sorder.done);
