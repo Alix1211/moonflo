@@ -2,10 +2,16 @@
 'use strict';
 
 /* ---------- 의뢰 ---------- */
+// 지금 만들 수 있는 꽃인가: 지금 퍼즐판에 나오는 꽃이거나, 이미 씨앗·꽃을 갖고 있거나 밭에 심어 둔 꽃
+function flowerMakeable(id) {
+  const S = G.S, panel = (G._gh && G._gh.kinds) ? G._gh.kinds().map(i => FLOWERS[i].id) : FLOWERS.slice(0, openKinds()).map(f => f.id);
+  return panel.includes(id) || (S.seeds[id] || 0) > 0 || (S.flowers[id] || 0) > 0 || S.beds.some(b => b.some(c => c && c.f === id && (c.s === 'seed' || c.s === 'bud' || c.s === 'bloom')));
+}
 function makeOrder() {
-  // 빨리 자라는 꽃이 더 자주 나옴
+  // 빨리 자라는 꽃이 더 자주 나옴. 의뢰는 지금 만들 수 있는 꽃만 요구함
   const open = openKinds(), first = (G.S.stats.orders || 0) < 3;       // 처음 3건은 처음 받은 씨앗(튤립·데이지·해바라기)으로 쉽게
-  const pool = first ? Object.keys(RULES.startSeeds).map(id => FLOWER[id]) : FLOWERS.slice(0, open).flatMap((f, i) => Array(open - i).fill(f));
+  let pool = first ? Object.keys(RULES.startSeeds).map(id => FLOWER[id]) : FLOWERS.slice(0, open).flatMap((f, i) => Array(open - i).fill(f)).filter(f => flowerMakeable(f.id));
+  if (!pool.length) pool = FLOWERS.slice(0, open);
   // 의뢰 종류: 보통 / 큰 주문(한 가지 꽃을 많이) / 모둠 주문(두 가지를 넉넉히). 큰 주문·모둠 주문은 값이 조금 더 후함
   const roll = first ? 1 : Math.random(), type = roll < RULES.bigOrderChance ? 'big' : roll < RULES.bigOrderChance + RULES.mixOrderChance ? 'mix' : 'normal';
   const kinds = type === 'big' ? 1 : type === 'mix' ? 2 : (first || Math.random() < .55 ? 1 : 2), need = {};
@@ -48,9 +54,10 @@ function refreshOrders() {
   }
   // 아직 안 열린 꽃이 필요한 예전 의뢰는 열린 꽃 의뢰로 바꿔 줌 (이미 그 꽃을 갖고 있어 납품할 수 있으면 그대로 둠)
   const open = openKinds();
+  // 안 열렸거나 지금은 만들 수 없는 꽃을 요구하는 의뢰도 바꿔 줌 (이미 납품할 수 있거나, 씨앗·꽃·심어 둔 것이 있으면 그대로 둠)
   S.orders = S.orders.map(o => {
-    const locked = Object.keys(o.need).some(id => FLOWERS.findIndex(f => f.id === id) >= open);
-    if (!locked || canDeliver(o)) return o;
+    const bad = Object.keys(o.need).some(id => FLOWERS.findIndex(f => f.id === id) >= open || !flowerMakeable(id));
+    if (!bad || canDeliver(o)) return o;
     add = true; return makeOrder();
   });
   // 의뢰는 쌓임: 자리를 비운 동안 지나간 시간만큼 (간격마다 1건씩) 게시판 칸이 찰 때까지 한꺼번에 들어옴
