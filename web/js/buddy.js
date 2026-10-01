@@ -158,10 +158,10 @@
     const p = (Date.now() - r.t0) / r.dur; if (p >= 1) { B.react = null; return; }
     const slide = p < .12 ? p / .12 : p > .85 ? (1 - p) / .15 : 1, e = 1 - Math.pow(1 - slide, 3);
     const pad = G.mode === 'pad', W = G.L.W, H = G.L.H, im = talkImg(r.e, false); if (!im) return;
-    const ph = H * (pad ? .46 : .21), pw = ph * im.width / im.height, px = W * (pad ? .12 : .17);
-    ctx.drawImage(im, px - pw / 2, H - ph * e + (pad ? 0 : -H * .0), pw, ph);          // 아래에서 쑥 올라옴
-    const size = pad ? 54 : 58; ctx.font = font(size, 700);
-    const tw = ctx.measureText(r.text).width, bw = tw + 90, bh = size * 1.9, bx = px + pw * .38, by = H - ph * .78 * e - bh * .5 + ph * .1;
+    const ph = H * (pad ? .34 : .125), pw = ph * im.width / im.height, px = W * (pad ? .07 : .085);      // 밭·메뉴를 가리지 않게 작게, 왼쪽 끝으로
+    ctx.drawImage(im, px - pw / 2, H - ph * e, pw, ph);          // 아래에서 쑥 올라옴
+    const size = pad ? 42 : 44; ctx.font = font(size, 700);
+    const tw = ctx.measureText(r.text).width, bw = tw + 70, bh = size * 1.9, bx = px + pw * .38, by = H * (pad ? .9 : .955) - bh * .5;       // 말풍선은 바닥 쪽 빈 자리에
     ctx.save(); ctx.globalAlpha = Math.min(1, e * 1.4); ctx.translate(0, (1 - e) * 30);
     ctx.shadowColor = 'rgba(60,40,20,.35)'; ctx.shadowBlur = 20 * (G.scale || 1); ctx.shadowOffsetY = 6 * (G.scale || 1);
     rrect(bx, by, bw, bh, bh / 2); ctx.fillStyle = '#fffaf0'; ctx.fill(); ctx.restore();
