@@ -13,6 +13,8 @@
       const add = range(S.kindsOpen, open).filter(i => !S.kinds.includes(i));
       S.kinds = shuffle(S.kinds.slice()).slice(add.length).concat(add).sort((x, y) => x - y);
     }
+    const tier = newestTier(), need = tier.filter(i => !S.kinds.includes(i));         // 예전 저장에서 새 꽃이 빠져 있어도 항상 들어가게 보정
+    if (need.length) S.kinds = shuffle(S.kinds.filter(i => !tier.includes(i))).slice(need.length).concat(S.kinds.filter(i => tier.includes(i)), need).sort((x, y) => x - y);
     S.kindsOpen = open; return S.kinds;
   };
   const rk = () => kinds()[Math.floor(Math.random() * kinds().length)];
