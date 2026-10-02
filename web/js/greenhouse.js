@@ -296,16 +296,27 @@
     for (let i = 0; i < 4; i++) { ctx.rotate(Math.PI / 2); ctx.moveTo(0, -r); ctx.quadraticCurveTo(r * .12, -r * .12, r, 0); ctx.quadraticCurveTo(r * .12, r * .12, 0, r); }
     ctx.restore(); ctx.fill();
   }
-  function ribbon(cx, cy, len, th, vertical, gold, t) {
-    const c = gold ? ['#fff0a0', '#e8b62c', '#a8760f'] : ['#ff8a98', '#e2364e', '#a5203a'];
+  // 특수칩 모양은 한 번만 그려 두고(그림처럼) 매 프레임엔 붙이기만 함 — 느린 기기 프레임 드랍 방지
+  const spCache = {};
+  function spSprite(key, s, draw) {
+    const S = Math.round(s), k = key + S; let c = spCache[k]; if (c) return c;
+    const P = Math.ceil(S * .35); c = document.createElement('canvas'); c.width = c.height = S + P * 2; c._p = P;
+    const main = ctx; ctx = c.getContext('2d');
+    try { draw(P + S / 2, P + S / 2, S); } finally { ctx = main; }
+    return (spCache[k] = c);
+  }
+  const ribCol = gold => gold ? ['#fff0a0', '#e8b62c', '#a8760f'] : ['#ff8a98', '#e2364e', '#a5203a'];
+  function ribbonBase(cx, cy, len, th, vertical, gold) {
+    const c = ribCol(gold);
     ctx.save(); ctx.translate(cx, cy); if (vertical) ctx.rotate(Math.PI / 2);
     ctx.shadowColor = 'rgba(40,10,10,.4)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
     const g = ctx.createLinearGradient(0, -th / 2, 0, th / 2); g.addColorStop(0, c[0]); g.addColorStop(.5, c[1]); g.addColorStop(1, c[2]);
     rrect(-len / 2, -th / 2, len, th, th * .2); ctx.fillStyle = g; ctx.fill(); ctx.shadowColor = 'transparent';
-    ctx.lineWidth = 3; ctx.strokeStyle = c[2]; ctx.stroke();
-    ctx.save(); rrect(-len / 2, -th / 2, len, th, th * .2); ctx.clip();          // 지나가는 반짝임
-    const gx = (((t / 1100) % 1.6) - .3) * len - len / 2; ctx.fillStyle = 'rgba(255,255,255,.55)';
-    ctx.beginPath(); ctx.ellipse(gx, -th * .12, th * .55, th * .16, 0, 0, 7); ctx.fill(); ctx.restore();
+    ctx.lineWidth = 3; ctx.strokeStyle = c[2]; ctx.stroke(); ctx.restore();
+  }
+  function ribbonTop(cx, cy, len, th, vertical, gold) {
+    const c = ribCol(gold);
+    ctx.save(); ctx.translate(cx, cy); if (vertical) ctx.rotate(Math.PI / 2);
     ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-len / 2 + th * .3, -th * .26); ctx.lineTo(len / 2 - th * .3, -th * .26); ctx.stroke();
     for (const sgn of [-1, 1]) {                                                    // 가운데 매듭 리본
       ctx.beginPath(); ctx.ellipse(sgn * th * .5, 0, th * .55, th * .4, sgn * -.45, 0, 7); ctx.fillStyle = c[1]; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = c[2]; ctx.stroke();
@@ -313,20 +324,35 @@
     ctx.beginPath(); ctx.arc(0, 0, th * .28, 0, 7); ctx.fillStyle = c[0]; ctx.fill(); ctx.strokeStyle = c[2]; ctx.stroke();
     ctx.restore();
   }
+  function ribbon(cx, cy, len, th, vertical, gold, t, s) {
+    const key = (vertical ? 'v' : 'h') + (gold ? 'g' : 'r');
+    const base = spSprite('rb' + key, s, (x, y) => ribbonBase(x, y, len, th, vertical, gold));
+    const top = spSprite('rt' + key, s, (x, y) => ribbonTop(x, y, len, th, vertical, gold));
+    ctx.drawImage(base, cx - s / 2 - base._p, cy - s / 2 - base._p);
+    ctx.save(); ctx.translate(cx, cy); if (vertical) ctx.rotate(Math.PI / 2);   // 지나가는 반짝임(가벼운 것만 매번)
+    ctx.beginPath(); ctx.rect(-len / 2, -th / 2, len, th); ctx.clip();
+    const gx = (((t / 1100) % 1.6) - .3) * len - len / 2; ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath(); ctx.ellipse(gx, -th * .12, th * .55, th * .16, 0, 0, 7); ctx.fill(); ctx.restore();
+    ctx.drawImage(top, cx - s / 2 - top._p, cy - s / 2 - top._p);
+  }
   function drawSpecial(x, y, s, sp, t) {
     const cx = x + s / 2, cy = y + s / 2;
     ctx.save();
     if (sp === 'bomb') {                                   // 폭탄: 덮지 않고 빛나며 반짝이는 별이 돌아요
       const pulse = .5 + .5 * Math.sin(t / 260), rr = s * (.6 + .07 * pulse);
-      const g = ctx.createRadialGradient(cx, cy, s * .15, cx, cy, rr);
-      g.addColorStop(0, 'rgba(255,230,120,0)'); g.addColorStop(.65, `rgba(255,190,60,${.35 + .25 * pulse})`); g.addColorStop(1, 'rgba(255,160,40,0)');
-      ctx.fillStyle = g; ctx.fillRect(x - s * .2, y - s * .2, s * 1.4, s * 1.4);
+      const glow = spSprite('glow', s, (gx, gy, S) => {
+        const R = S * .67, g = ctx.createRadialGradient(gx, gy, S * .15, gx, gy, R);
+        g.addColorStop(0, 'rgba(255,230,120,0)'); g.addColorStop(.65, 'rgba(255,190,60,.6)'); g.addColorStop(1, 'rgba(255,160,40,0)');
+        ctx.fillStyle = g; ctx.fillRect(gx - R, gy - R, R * 2, R * 2);
+      });
+      const k = rr / (s * .67), gw = glow.width * k;
+      ctx.globalAlpha *= (.35 + .25 * pulse) / .6; ctx.drawImage(glow, cx - gw / 2, cy - gw / 2, gw, gw); ctx.globalAlpha /= (.35 + .25 * pulse) / .6;
       ctx.fillStyle = '#fff6c0';
       for (let i = 0; i < 4; i++) { const a = t / 650 + i * Math.PI / 2, r = s * .43; star(cx + Math.cos(a) * r, cy + Math.sin(a) * r, s * (.1 + .04 * Math.sin(t / 180 + i)), a); }
-    } else if (sp === 'row') ribbon(cx, cy, s * .98, s * .24, false, false, t);
-    else if (sp === 'col') ribbon(cx, cy, s * .98, s * .24, true, false, t);
-    else if (sp === 'wideRow') ribbon(cx, cy, s * .98, s * .42, false, true, t);
-    else if (sp === 'wideCol') ribbon(cx, cy, s * .98, s * .42, true, true, t);
+    } else if (sp === 'row') ribbon(cx, cy, s * .98, s * .24, false, false, t, s);
+    else if (sp === 'col') ribbon(cx, cy, s * .98, s * .24, true, false, t, s);
+    else if (sp === 'wideRow') ribbon(cx, cy, s * .98, s * .42, false, true, t, s);
+    else if (sp === 'wideCol') ribbon(cx, cy, s * .98, s * .42, true, true, t, s);
     ctx.restore();
   }
 
