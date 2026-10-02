@@ -1,0 +1,136 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>당근 뽑기</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#7cb35c;font-family:"Noto Sans KR",sans-serif;touch-action:none;user-select:none}
+canvas{display:block;width:100vw;height:100vh}
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(40,60,30,.35);z-index:3}
+.ov[hidden],#playBtns[hidden]{display:none}
+.card{background:#fff8ea;border:5px solid #9b7148;border-radius:28px;padding:26px 34px;text-align:center;color:#5c3d1e;max-width:86vw}
+.card h1{margin:0 0 8px;font-size:30px}.card p{margin:6px 0;font-size:18px}.big{font-size:21px;font-weight:800;color:#d9662b}
+button{font:inherit;font-size:21px;border:0;border-radius:14px;padding:12px 30px;background:#e57a3a;color:#fff;margin:12px 6px 0;min-height:52px;cursor:pointer}
+#playBtns{position:fixed;left:12px;bottom:14px;display:flex;gap:10px;z-index:2}#playBtns button{margin:0;font-size:17px;padding:8px 16px;min-height:48px;background:rgba(90,60,30,.72)}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="playBtns" hidden><button id="btnRe" type="button">다시 하기</button><button id="btnQuit" type="button">종료하기</button></div>
+<div class="ov" id="ovTut" hidden><div class="card" style="display:flex;gap:18px;align-items:center;text-align:left;max-width:min(680px,90vw)">
+<img src="img/mini/rabbit.webp" alt="" style="width:min(150px,28vw);flex:none"><div><p id="tutName" style="font-weight:800;color:#d9662b;margin:0 0 6px">보들이</p><p id="tutText" style="font-size:20px;line-height:1.5"></p><p style="color:#b89a72;font-size:15px;text-align:right;margin:8px 0 0">▼ 눌러서 다음</p></div></div></div>
+<div class="ov" id="ovStart"><div class="card"><h1>당근 뽑기</h1>
+<p>쏙 올라온 당근을 톡! 눌러 뽑아요.</p><p>금당근은 3개 값! 꽃은 뽑으면 안 돼요(3초 줄어요).</p>
+<p class="big" id="startInfo">60초 동안 많이 뽑을수록 돈을 받아요</p>
+<button id="btnStart" type="button" disabled>준비 중…</button></div></div>
+<div class="ov" id="ovOver" hidden><div class="card"><h1>수고했어요</h1>
+<p id="resCnt"></p><p class="big" id="resGold"></p><p id="resNote"></p>
+<button id="btnAgain" type="button">다시 하기</button><button id="btnExit" type="button" hidden>방으로 돌아가기</button></div></div>
+<script>
+(() => {
+const QS = new URLSearchParams(location.search), EMBED = QS.has('embed'); let LEFT = Math.max(0, +(QS.get('left') || 0));
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1;
+function resize() { dpr = Math.min(devicePixelRatio || 1, 1.5); W = innerWidth; H = innerHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+addEventListener('resize', resize); resize();
+const load = s => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = s; });
+let CAR, RAB, BG, FLS = [];
+// 판: 3×3 구멍. 가로 화면이면 4×3
+let holes = [], st = 'ready', t = 0, left = 60, cnt = 0, gold = 0, spawnT = 0, last = 0, fx = [], rabbitJoy = 0;
+const DUR = 60, rnd = Math.random;
+let BED = null, GBG = null, bedR = null, rabR = null;
+function layout() {       // 우리 밭 그림 한 판(4×4 칸)을 화면에 알맞게 두고, 옆에서 토끼가 응원
+  const land = W > H, bw0 = 709, bh0 = 701;
+  const k = land ? Math.min(H * .8 / bh0, W * .58 / bw0) : Math.min(W * .9 / bw0, H * .56 / bh0), bw = bw0 * k, bh = bh0 * k;
+  const bx = land ? W * .42 - bw / 2 : (W - bw) / 2, by = land ? (H - bh) / 2 + H * .03 : H * .36;
+  bedR = [bx, by, bw, bh]; holes = [];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) holes.push({ x: bx + (90 + c * 128.3 + 59.5) * k, y: by + (125 + r * 114 + 60) * k, r: 50 * k, item: null });
+  const rh = land ? Math.min(H * .42, bw * .55) : Math.min(H * .2, W * .4);
+  rabR = land ? [bx + bw + W * .02, H * .5 - rh * .2, rh] : [W - rh * 1.05 - 10, by - rh * .95, rh];
+  BG = null;
+}
+function makeBg() {
+  const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const g = c.getContext('2d'); g.scale(dpr, dpr);
+  if (GBG) { const kk = Math.max(W / GBG.width, H / GBG.height); g.drawImage(GBG, (W - GBG.width * kk) / 2, (H - GBG.height * kk) / 2, GBG.width * kk, GBG.height * kk); g.fillStyle = 'rgba(255,250,235,.18)'; g.fillRect(0, 0, W, H); }
+  else { g.fillStyle = '#86bf62'; g.fillRect(0, 0, W, H); }
+  if (BED) g.drawImage(BED, ...bedR);
+  for (const h of holes) { g.fillStyle = 'rgba(70,45,25,.85)'; g.beginPath(); g.ellipse(h.x, h.y, h.r * 1.05, h.r * .42, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(40,25,12,.9)'; g.beginPath(); g.ellipse(h.x, h.y + 2, h.r * .85, h.r * .3, 0, 0, 7); g.fill(); }
+  return c;
+}
+function speed() { return Math.max(.62, 1.25 - t / 70); }               // 당근이 나와 있는 시간(점점 짧아짐)
+function spawn() {
+  const free = holes.filter(h => !h.item); if (!free.length) return;
+  const h = free[Math.floor(rnd() * free.length)], k = rnd();
+  h.item = { kind: k < .1 ? 'gold' : k < .24 && t > 6 ? 'flower' : 'carrot', fl: Math.floor(rnd() * 6), t: 0, life: speed() + .5, hit: 0 };
+}
+function tap(x, y) {
+  if (st !== 'play') return;
+  for (const h of holes) {
+    const it = h.item; if (!it || it.hit) continue;
+    if (Math.hypot(x - h.x, y - (h.y - h.r * .6)) > h.r * (W > H ? 1.3 : 1.7)) continue;   // 폰은 칸이 작아 누르는 범위를 넓게
+    it.hit = 1; it.hitAt = it.t;
+    if (it.kind === 'flower') { left -= 3; fx.push({ x: h.x, y: h.y - h.r, s: '꽃은 안 돼요! -3초', c: '#d9536b', l: 1.2 }); }
+    else { const v = it.kind === 'gold' ? 3 : 1; cnt += v; rabbitJoy = .5; fx.push({ x: h.x, y: h.y - h.r * 1.4, s: '+' + v, c: it.kind === 'gold' ? '#f5b82e' : '#e57a3a', l: 1 }); }
+    return;
+  }
+}
+cv.addEventListener('pointerdown', e => tap(e.clientX, e.clientY));
+function update(dt) {
+  t += dt; left -= dt; if (left <= 0) { left = 0; finish(); return; }
+  spawnT -= dt; if (spawnT <= 0) { spawn(); if (t > 20 && rnd() < .35) spawn(); spawnT = Math.max(.35, .9 - t / 90); }
+  for (const h of holes) { const it = h.item; if (!it) continue; it.t += dt; if (it.hit ? it.t > it.hitAt + .25 : it.t > it.life) h.item = null; }
+  for (let i = fx.length - 1; i >= 0; i--) { fx[i].l -= dt * 1.4; fx[i].y -= dt * 60; if (fx[i].l <= 0) fx.splice(i, 1); }
+  if (rabbitJoy > 0) rabbitJoy -= dt;
+}
+function drawItem(h) {
+  const it = h.item; if (!it) return;
+  const up = it.hit ? Math.min(1.6, 1 + (it.t - it.hitAt) * 4) : Math.min(1, it.t / .15, (it.life - it.t) / .15);   // 올라왔다 내려감 · 뽑히면 위로 쏙
+  const s = h.r * 2.3;
+  ctx.save(); ctx.beginPath(); ctx.rect(h.x - s, h.y - s * 2.2, s * 2, s * 2.2); ctx.clip();          // 구멍 위로만 보이게
+  const y = h.y + s * .1 - up * s * 1.25;
+  if (it.kind === 'flower') { const im = FLS[it.fl]; if (im) { const fh = s * 1.3, fw = fh * im.width / im.height; ctx.drawImage(im, h.x - fw / 2, y + s * .05, fw, fh); } }   // 꽃(뽑으면 안 됨)
+  else if (CAR) {
+    const w = s * .85, hh = w * CAR.height / CAR.width;
+    if (it.kind === 'gold') { ctx.globalAlpha = .55; ctx.fillStyle = '#ffe680'; ctx.beginPath(); ctx.arc(h.x, y + hh * .35, s * .72, 0, 7); ctx.fill(); ctx.globalAlpha = 1; ctx.filter = 'sepia(1) saturate(3) hue-rotate(5deg) brightness(1.15)'; }
+    ctx.translate(h.x, y + hh * .45); ctx.rotate(-.45); ctx.drawImage(CAR, -w / 2, -hh / 2, w, hh);       // 비스듬한 당근을 세워서
+    ctx.filter = 'none';
+  }
+  ctx.restore();
+  ctx.fillStyle = '#6b4a2b'; ctx.beginPath(); ctx.ellipse(h.x, h.y + h.r * .1, h.r * 1.15, h.r * .3, 0, 0, Math.PI); ctx.fill();   // 구멍 앞턱
+}
+const mmss = s => Math.ceil(s);
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!BG) BG = makeBg(); ctx.drawImage(BG, 0, 0, W, H);
+  for (const h of holes) drawItem(h);
+  if (RAB && rabR) { const rh = rabR[2], rw = rh * RAB.width / RAB.height, j = rabbitJoy > 0 ? Math.abs(Math.sin(rabbitJoy * 18)) * rh * .12 : Math.abs(Math.sin(t * 3)) * rh * .02;
+    ctx.drawImage(RAB, rabR[0], rabR[1] - j, rw, rh);                                  // 옆에서 응원하는 토끼(뽑을 때마다 폴짝)
+    if (rabbitJoy > 0) { ctx.font = `bold ${Math.round(rh * .14)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = '#e57a3a'; ctx.fillText('잘한다!', rabR[0] + rw / 2, rabR[1] - j - rh * .05); } }
+  ctx.font = 'bold 26px sans-serif'; ctx.textBaseline = 'middle'; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(60,40,20,.6)'; ctx.fillStyle = '#fff';
+  ctx.textAlign = 'left'; const tt = '⏱ ' + mmss(left) + '초'; ctx.strokeText(tt, 16, 32); ctx.fillText(tt, 16, 32);
+  const ct = '🥕 ' + cnt; ctx.strokeText(ct, 16, 70); ctx.fillText(ct, 16, 70);
+  for (const f of fx) { ctx.globalAlpha = Math.max(0, f.l); ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = f.c; ctx.strokeText(f.s, f.x, f.y); ctx.fillText(f.s, f.x, f.y); }
+  ctx.globalAlpha = 1;
+}
+function loop(ts) { const dt = Math.min(.05, (ts - last) / 1000 || 0); last = ts; if (st === 'play') update(dt); draw(); requestAnimationFrame(loop); }
+const goldOf = n => n < 5 ? 0 : Math.min(100, 20 + n * 2);       // 30송이쯤이면 80골드, 최대 100
+function settle() { const g = goldOf(cnt), give = EMBED ? (LEFT > 0 ? g : 0) : g; if (EMBED && give > 0) LEFT--; if (EMBED) { try { parent.postMessage({ type: 'mini-end', game: 'carrot', gold: give, score: cnt }, '*'); } catch (e) {} } return [g, give]; }
+function finish() {
+  st = 'over'; document.getElementById('playBtns').hidden = true; const [g, give] = settle();
+  document.getElementById('resCnt').textContent = `당근 ${cnt}개를 뽑았어요`;
+  document.getElementById('resGold').textContent = give > 0 ? `${give}골드를 받았어요` : (g > 0 ? '오늘 보상은 모두 받았어요' : '5개부터 돈을 받아요');
+  document.getElementById('resNote').textContent = EMBED ? (LEFT > 0 ? `오늘 ${LEFT}번 더 받을 수 있어요` : '내일 또 받을 수 있어요. 놀이는 계속 할 수 있어요') : '';
+  document.getElementById('ovOver').hidden = false;
+}
+function begin() { t = 0; left = DUR; cnt = 0; fx = []; spawnT = .4; for (const h of holes) h.item = null; st = 'play'; document.getElementById('ovStart').hidden = true; document.getElementById('ovOver').hidden = true; document.getElementById('playBtns').hidden = false; }
+document.getElementById('btnStart').onclick = begin; document.getElementById('btnAgain').onclick = begin;
+document.getElementById('btnRe').onclick = () => { if (st === 'play') { settle(); begin(); } };
+document.getElementById('btnQuit').onclick = () => { if (st === 'play') finish(); };
+if (EMBED) { const bx = document.getElementById('btnExit'); bx.hidden = false; bx.onclick = () => { try { parent.postMessage({ type: 'mini-exit' }, '*'); } catch (e) {} };
+  document.getElementById('startInfo').textContent = LEFT > 0 ? `많이 뽑을수록 돈! 오늘 ${LEFT}번 더 받을 수 있어요` : '오늘 보상은 다 받았어요. 놀이는 계속 할 수 있어요'; }
+// 처음 한 번: 토끼 보들이의 인사와 놀이 설명
+const TUT = ['안녕! 나는 보들이야. 오늘부터 네 방에서 같이 살게 됐어!', '그런데 말이야… 밭에 당근이 자꾸 쏙쏙 올라와. 나 혼자서는 다 못 뽑겠어!', '당근이 올라오면 톡! 눌러서 뽑아 줘. 반짝이는 금당근은 세 개 값이야.', '앗, 꽃은 뽑으면 안 돼! 예쁘게 피어 있잖아. 잘못 뽑으면 시간이 3초 줄어들어.', '많이 뽑을수록 용돈도 줄게! 하루에 두 번까지야. 준비됐지?'];
+let seen = false; try { seen = localStorage.getItem('carrot_tut') === '1'; } catch (e) {}
+if (!seen) { let k = 0; const ov = document.getElementById('ovTut'), tx = document.getElementById('tutText'); tx.textContent = TUT[0]; ov.hidden = false; document.getElementById('ovStart').hidden = true;
+  ov.onclick = () => { k++; if (k < TUT.length) { tx.textContent = TUT[k]; return; } ov.hidden = true; document.getElementById('ovStart').hidden = false; try { localStorage.setItem('carrot_tut', '1'); } catch (e) {} }; }
+addEventListener('resize', layout); layout();
+Promise.all([1, 2, 3, 4, 5, 6].map(i => load(`img/mini/f${i}.webp`))).then(a => { FLS = a; G2(); });
+function G2() {}
+Promise.all([load('img/mini/carrot.webp'), load('img/mini/rabbit.webp'), load('img/bed_base.webp'), load(innerWidth > innerHeight ? 'img/bg_garden_pad.jpg' : 'img/bg_garden_phone.jpg')]).then(([c, r, bd, gb]) => { CAR = c; RAB = r; BED = bd; GBG = gb; BG = null; const b = document.getElementById('btnStart'); b.disabled = false; b.textContent = '시작'; requestAnimationFrame(loop); });
+})();
+</script></body></html>

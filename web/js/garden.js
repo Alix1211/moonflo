@@ -168,6 +168,7 @@
   function harvestOne(b, k) {
     const cell = G.S.beds[b][k], [x, y, w] = cellRect(b, k), f = FD(cell.f);
     const n = RULES.harvestYield + (G.S.glove >= 4 && Math.random() < RULES.gloveBonusChance ? 1 : 0);      // 장갑 4칸이면 가끔 한 송이 더
+      + (Math.random() < bonus('harvest') ? 1 : 0);                                                              // 소품 능력: 가끔 한 송이 더
     addBloom(cell.f, n); G.S.stats.harvest++; SFX.both('harvest');
     { const [, , , hh] = cellRect(b, k); fxPollen(x, y, w, hh || w, f.color, n > RULES.harvestYield ? 34 : 22); }
     floatText(`+${n} ${f.name}`, x + w / 2, y, n > RULES.harvestYield ? '#ffe27a' : '#fff6c8');
@@ -177,7 +178,8 @@
   function waterOne(b, k) {
     const cell = G.S.beds[b][k], [x, y, w, h] = cellRect(b, k), f = FD(cell.f);
     fxDrops(x, y, w, h); SFX.play('water', 0, 120);
-    cell.wet = true; cell.until = Date.now() + f.grow[cell.s === 'seed' ? 0 : 1] * MIN;
+    const dur = f.grow[cell.s === 'seed' ? 0 : 1] * MIN * (1 - bonus('grow'));   // 소품 능력: 자라는 시간 단축
+    cell.wet = true; cell.dur = dur; cell.until = Date.now() + dur;
     floatText(fmtLeft(cell.until - Date.now()), x + w / 2, y + h / 2, '#dff4ff');
   }
   function apply(b, k, act) {
@@ -253,6 +255,16 @@
     ctx.globalAlpha = 1;
   }
 
+  // 노란 새(소품 n5): 게시판 위에 앉아, 누르면 가진 꽃 수를 알려 줌
+  const birdRect = () => { const b = G.L.board, sz = G.mode === 'pad' ? 130 : 170; return [b[0] - sz * .35, b[1] - sz * .55, sz, sz]; };
+  function openBird() {
+    openPopup({ title: '노란 새가 세어 봤어요', draw(r) {
+      const [x, y, w] = r, pd = G.mode === 'pad', fs = pd ? 34 : 40, have = FLOWERS.filter(f => (G.S.flowers[f.id] || 0) > 0);
+      if (!have.length) { wrap('아직 가진 꽃이 없어요. 수확하면 여기서 세어 줄게요.', x, y + 40, w, fs, '#6e4b28'); return; }
+      const cols = 2, cw = w / cols, lh = fs + 26;
+      have.forEach((f, i) => text(`${f.name}  ${G.S.flowers[f.id]}송이`, x + (i % cols) * cw + 10, y + 40 + Math.floor(i / cols) * lh, fs, '#6e4b28', 'left'));
+    } });
+  }
   const scr = G.screens.garden = {
     invalidate() { st.lock = []; st.dirtyBed = st.dirtyBed.map(() => true); for (let i = 0; i < G.S.beds.length; i++) st.dirtyBed[i] = true; G.dirty = true; },
     onMode() { st.scroll = 0; st.page = 0; st.anim = null; st.cache = []; st.layer = null; st.fairy = null; this.invalidate(); },
@@ -287,7 +299,7 @@
         if (!c.wet || !c.until) return;
         const [x, y, w] = cellRect(i, k); if (x > G.L.W || x + w < 0 || (G.mode === 'pad' && x < cfg().fadeTo)) return;
         const left = c.until - G.now;
-        const p = 1 - left / (FD(c.f).grow[c.s === 'seed' ? 0 : 1] * MIN);
+        const p = 1 - left / (c.dur || FD(c.f).grow[c.s === 'seed' ? 0 : 1] * MIN);
         ctx.beginPath(); ctx.arc(x + w - 14, y + 16, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, Math.min(1, p)));
         ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(210,240,255,.95)'; ctx.stroke();
       });
@@ -305,6 +317,17 @@
         ctx.beginPath(); ctx.arc(bx, by, 32, 0, 7); ctx.fillStyle = '#e24b3b'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.stroke();
         text(String(n), bx, by + 1, 36, '#fff', 'center');
       }
+      if (G.S.owned.p_n5) {                              // 노란 새: 나무 게시판에 지금 가진 꽃 수를 적어 둠
+        const b = G.L.board, ix = b[0] + b[2] * .13, iy = b[1] + b[3] * .3, iw = b[2] * .72, ih = b[3] * .62, fl = FLOWERS.slice(0, openKinds());
+        const cols = 4, rows = Math.ceil(fl.length / cols), cw = iw / cols, ch = ih / 3, fs = Math.min(ch * .55, cw * .3), oy = (3 - rows) * ch / 2;   // 12종까지 4×3 칸, 줄 간격은 고정
+        const need = orderNeed();
+        fl.forEach((f, i) => { const cx = ix + (i % cols) * cw, cy = iy + oy + Math.floor(i / cols) * ch + ch / 2, n = G.S.flowers[f.id] || 0, nd = need[f.id] || 0;
+          imgFit(G.img[`flower_${f.id}_bloom`], cx + cw * .24, cy, Math.min(ch * .9, cw * .45));
+          // 의뢰에 필요한 꽃은 '가진 수/필요한 수' (모자라면 분홍, 넉넉하면 연두), 필요 없는 꽃은 가진 수만 흐리게
+          if (nd) text(`${n}/${nd}`, cx + cw * .7, cy + 2, fs * .9, n >= nd ? '#c8f5a0' : '#ffb3b3', 'center', true);
+          else text(String(n), cx + cw * .7, cy + 2, fs, 'rgba(255,245,220,.6)', 'center', true); });
+      }
+      if (G.S.owned.p_n5 && G.img.prop_n5) { const r = birdRect(); ctx.drawImage(G.img.prop_n5, r[0], r[1] + Math.sin(Date.now() / 600) * 3, r[2], r[3]); }   // 게시판 위 노란 새
       drawTopInfo();
       drawFx();
       fairyStep(); drawFairy();
@@ -351,6 +374,7 @@
     up(p, tap) {
       const d = st.drag; st.drag = null; if (!d) return;
       if (d.kind === 'scroll' && tap) {            // 끌지 않고 톡 누른 게시판·우체통
+        if (G.S.owned.p_n5 && inRect(p, birdRect())) return openOrders();
         if (inRect(p, G.L.board)) { animateTo(Math.max(0, Math.min(maxScroll(), st.scroll))); return openOrders(); }
         if (inRect(p, G.L.mailbox)) { animateTo(Math.max(0, Math.min(maxScroll(), st.scroll))); return openMail(); }
         for (let i = G.S.beds.length; i < total(); i++) {       // 잠긴 화단을 톡

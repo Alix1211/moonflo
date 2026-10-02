@@ -90,7 +90,7 @@ const BUTTONS = {
 BUTTONS.shop = [];
 BUTTONS.lab = [];
 const BTN_LABEL = {
-  orders: '의뢰', mail: '우체통', shop: '상점', inventory: '인벤토리', seed: '지금 씨앗',
+  orders: '의뢰', mail: '우체통', shop: '마을', inventory: '인벤토리', seed: '지금 씨앗',
   room: '방', garden: '정원', greenhouse: '온실',
   craft: '씨앗 제작', hint: '힌트',
   voice: '말로 쓰기', today: '오늘 기록', calendar: '달력',
@@ -150,7 +150,50 @@ const PROPS = [
   { id: 'h7', place: 'gh', name: '새장', cost: 1000 }, { id: 'h8', place: 'gh', name: '꽃 벤치', cost: 850 },
   { id: 'h9', place: 'gh', name: '꽃 아치', cost: 3000 }, { id: 'h11', place: 'gh', name: '나무 물통', cost: 320 },
   { id: 'h12', place: 'gh', name: '돌 화분', cost: 380 },
+  // 새 소품 24개 (2026-10 그림)
+  { id: 'n1', place: 'garden', name: '꽃 나무통', cost: 520 }, { id: 'n2', place: 'gh', name: '씨앗 상자', cost: 880 },
+  { id: 'n3', place: 'gh', name: '리본 꽃삽', cost: 460 }, { id: 'n4', place: 'garden', name: '꽃 게시판', cost: 1200 },
+  { id: 'n5', place: 'garden', name: '노란 새', cost: 1500 }, { id: 'n6', place: 'room', name: '꽃잎 유리병', cost: 640 },
+  { id: 'n7', place: 'room', name: '꽃모자 인형', cost: 980 }, { id: 'n8', place: 'room', name: '분홍 꽃 러그', cost: 760 },
+  { id: 'n9', place: 'garden', name: '꽃길 이정표', cost: 560 }, { id: 'n10', place: 'garden', name: '꽃 나무상자', cost: 680 },
+  { id: 'n11', place: 'room', name: '라벤더 꽃바구니', cost: 720 }, { id: 'n12', place: 'garden', name: '정원 등불', cost: 900 },
+  { id: 'n13', place: 'gh', name: '분홍 걸이 화분', cost: 540 }, { id: 'n14', place: 'room', name: '유리 돔 정원', cost: 1680 },
+  { id: 'n15', place: 'gh', name: '주전자 선반', cost: 820 }, { id: 'n16', place: 'room', name: '체크 스툴', cost: 480 },
+  { id: 'n17', place: 'garden', name: '꽃 우체통', cost: 1100 }, { id: 'n18', place: 'room', name: '꽃 리스', cost: 860, wall: true },
+  { id: 'n19', place: 'room', name: '장미 쿠션', cost: 420 }, { id: 'n20', place: 'garden', name: '피크닉 매트', cost: 600 },
+  { id: 'n21', place: 'room', name: '홍차 세트', cost: 940 }, { id: 'n22', place: 'gh', name: '화분 더미', cost: 380 },
+  { id: 'n23', place: 'room', name: '라벤더 다발', cost: 340 }, { id: 'n24', place: 'gh', name: '나비 석상', cost: 2200 },
+  { id: 'console', place: 'room', name: '게임기', cost: 800 },   // 문플로: 사면 방 바닥에 게임기가 생김 → 꽃밭 서바이벌
 ];
+// 소품 능력: 사서 가지고 있으면 적용(놓지 않아도 됨). 같은 종류는 합쳐지고 위에 한도가 있음
+const EFFECT_KIND = {
+  grow:    { label: v => `꽃 자라는 시간 −${v}%`, cap: 40 },
+  harvest: { label: v => `수확 때 한 송이 더 ${v}%`, cap: 50 },
+  coin:    { label: v => `의뢰 보상 돈 +${v}%`, cap: 50 },
+  pts:     { label: v => `퍼즐 칩 점수 +${v}%`, cap: 50 },
+  sp:      { label: v => `퍼즐 특수칩 등장 +${v}%`, cap: 30 },
+  seed:    { label: v => `씨앗 만들기 비용 −${v}%`, cap: 40 },
+};
+const PROP_EFFECT = {
+  g1: ['grow', 9], g2: ['coin', 5], g3: ['harvest', 5], g4: ['harvest', 6], g5: ['grow', 5], g6: ['pts', 6], g7: ['grow', 8], g8: ['harvest', 7],
+  g10: ['sp', 7], g11: ['pts', 7], g12: ['coin', 6],
+  r1: ['seed', 6], r2: ['pts', 5], r3: ['seed', 8], r4: ['coin', 5], r5: ['sp', 6], r6: ['harvest', 5], r7: ['grow', 5], r8: ['coin', 6],
+  r9: ['pts', 6], r10: ['grow', 7], r11: ['sp', 7], r12: ['harvest', 6],
+  h1: ['grow', 5], h2: ['seed', 7], h3: ['grow', 6], h4: ['sp', 8], h5: ['pts', 7], h6: ['pts', 5], h7: ['harvest', 7], h8: ['coin', 6],
+  h9: ['sp', 9], h11: ['seed', 5], h12: ['harvest', 5],
+  n1: ['harvest', 6], n2: ['seed', 8], n3: ['grow', 6], n4: ['coin', 8], n6: ['pts', 7], n7: ['sp', 6], n8: ['seed', 5],
+  n9: ['grow', 5], n10: ['harvest', 7], n11: ['pts', 6], n12: ['grow', 7], n13: ['harvest', 5], n14: ['sp', 9], n15: ['grow', 8], n16: ['coin', 5],
+  n17: ['coin', 7], n18: ['pts', 8], n19: ['seed', 6], n20: ['harvest', 8], n21: ['pts', 9], n22: ['seed', 7], n23: ['sp', 5], n24: ['sp', 8],
+};
+const PROP_SPECIAL = { n5: '의뢰 게시판에 내 꽃 수를 늘 보여 줘요', console: '방에 게임기가 생겨요 · 꽃밭 서바이벌' };   // 숫자 능력 대신 특별한 기능
+const PROP_PLAY = { r5: '당근 뽑기' };   // 사서 방에 놓으면 놀이가 열리는 소품
+const propEffectText = id => { if (PROP_SPECIAL[id]) return PROP_SPECIAL[id]; const e = PROP_EFFECT[id]; return (e ? EFFECT_KIND[e[0]].label(e[1]) : '') + (PROP_PLAY[id] ? ' · 놀이' : ''); };
+// 가진 소품 능력의 합(0~1). 예: bonus('grow') = 0.14 → 14%
+function bonus(kind) {
+  const S = G.S; if (!S || !S.owned) return 0; let v = 0;
+  for (const id in PROP_EFFECT) if (PROP_EFFECT[id][0] === kind && S.owned['p_' + id]) v += PROP_EFFECT[id][1];
+  return Math.min(v, EFFECT_KIND[kind].cap) / 100;
+}
 const PROP = Object.fromEntries(PROPS.map(p => [p.id, p]));
 // 자리: 곳마다 자리 수는 같고(산 소품이 그 자리에 놓임), 기기별로 좌표만 다름. a 'b' = 바닥(발 기준), 'c' = 가운데(벽·매달림)
 const DECOR_COUNT = { garden: 3, room: 6, gh: 3 };      // room: 앞 4개 바닥, 뒤 2개 벽
@@ -273,3 +316,7 @@ Object.assign(RULES, {
   specialMult: [0, 2, 2, 3, 4, 5],     // 등급별 돈 배수
   specialGems: [0, 0, 1, 2, 3, 5],     // 등급별 다이아
 });
+const seedCost = () => Math.max(1, Math.round(RULES.seedCost * (1 - bonus('seed'))));   // 소품 능력: 씨앗 만들기 비용
+
+// 지금 남은 일반 의뢰에 필요한 꽃 수 합계(특별 의뢰 제외) — 노란 새 게시판용
+function orderNeed() { const n = {}; for (const o of (G.S.orders || [])) for (const id in o.need) n[id] = (n[id] || 0) + o.need[id]; return n; }

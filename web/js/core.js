@@ -42,6 +42,8 @@ function imageList() {
     ...['hg_10','hg_30','hg_60','hg_360'].map(n => [n, `img/item/${n}.png`]),
     ...['fairy','fairy2','hourglass','hourglass2','teapot','can','can2','glove','glove2'].map(n => ['it_' + n, `img/item/it_${n}.png`]),
     ...['basket','harvest','hoe','sleep','wheel','med','bp','toilet'].map(n => ['po_' + n, `img/char/po_${n}.png`]),
+    ['vil_map_pad', 'img/village/map_pad.jpg'], ['vil_map_phone', 'img/village/map_phone.jpg'],
+    ...['seed','flower','general','furniture'].flatMap(k => [['vil_st_' + k, `img/village/st_${k}.jpg`], ...['n','t','s'].map(f => [`vil_kp_${k}_${f}`, `img/village/kp_${k}_${f}.webp`])]),
     ['bg_shop', 'img/bg_shop.jpg'], ['bg_lab_pad', 'img/bg_lab_pad.jpg'], ['bg_lab_phone', 'img/bg_lab_phone.jpg'],
     ...['slot','slot_on','btn','btn_b','back','pot0','pot1','pot2','bub0','bub1','bub2','spk0','spk1','spk2','dh0','dh1','dh2'].map(n => ['lab_' + n, `img/lab/${n}.webp`]),
     ...PROPS.map(p => ['prop_' + p.id, `img/prop/${p.id}.png`]),
@@ -299,7 +301,7 @@ function onButton(id) {
   if (id === 'garden' || id === 'greenhouse' || id === 'room') { go(id); return; }
   if (id === 'orders') return openOrders();
   if (id === 'mail') return openMail();
-  if (id === 'shop') return go('shop');
+  if (id === 'shop') return go('village');   // 상점 버튼 → 마을
   const scr = G.screens[G.screen]; scr.onButton && scr.onButton(id);
 }
 function go(name) {

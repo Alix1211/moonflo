@@ -1,15 +1,20 @@
-// 문선농장 — 상점: 주인 케인이 지키는 가게. 농장 물건·꾸미기 소품을 돈으로 사고, 산 소품은 정원·방·온실 정해진 자리에 놓임
+// 문선농장 — 상점: 마을 가게 안. 농장 물건·꾸미기 소품을 돈으로 사고, 산 소품은 정원·방·온실 정해진 자리에 놓임
 'use strict';
 
 /* ---------- 놓인 소품 (정원·방·온실 화면이 부름) ---------- */
 function decorKey() { return JSON.stringify(G.S.decor); }
 function drawDecor(place) {
   const slots = DECOR_SLOTS[G.mode][place], list = (G.S.decor && G.S.decor[place]) || [];
+  for (const id in PROP_SPECIAL) { const j = list.indexOf(id); if (j >= 0) list.splice(j, 1); }   // 특별 소품(노란 새)은 자리에 놓지 않음 — 게시판 위에 따로 나옴
   slots.forEach((sl, i) => {
     if (!list[i] || !PROP[list[i]]) return; const im = G.img['prop_' + list[i]]; if (!im) return;
     const sc = PROP[list[i]].sc || 1, k = Math.min(sl.w * sc / im.width, sl.h * sc / im.height), w = im.width * k, h = im.height * k;
     ctx.drawImage(im, sl.x - w / 2, sl.a === 'b' ? sl.y - h : sl.y - h / 2, w, h);
   });
+}
+function decorRect(place, id) {   // 놓인 소품의 화면 자리(없으면 null)
+  const list = (G.S.decor && G.S.decor[place]) || [], i = list.indexOf(id); if (i < 0) return null; const sl = DECOR_SLOTS[G.mode][place][i]; if (!sl) return null;
+  return [sl.x - sl.w / 2, sl.a === 'b' ? sl.y - sl.h : sl.y - sl.h / 2, sl.w, sl.h];
 }
 function decorSlots(p) {           // 이 소품이 들어갈 수 있는 자리 번호들 (방은 벽걸이 2자리가 따로)
   const n = DECOR_COUNT[p.place], all = Array.from({ length: n }, (_, i) => i);
@@ -37,14 +42,26 @@ function removeProp(id) {
   const say = (line, face = 1) => { st.line = line; st.face = face; st.talkUntil = Date.now() + 1300; st.faceUntil = Date.now() + 4500; G.dirty = true; };
   const isOwned = it => it.kind === 'prop' ? !!G.S.owned['p_' + it.id] : !!G.S.owned[it.id];
 
+  // 가게별 물건 분류 (소품 id → 가게)
+  const PROP_SHOP = {
+    seed: ['n2', 'n3', 'n22', 'g3', 'g5', 'h11', 'h12', 'n13', 'h1', 'r7'],
+    flower: ['n1', 'n10', 'n11', 'n23', 'n18', 'g4', 'r6', 'r12', 'n6', 'h6', 'h5', 'g8'],
+    furniture: ['g1', 'g2', 'g7', 'g12', 'n4', 'n15', 'n16', 'n14', 'r2', 'r3', 'r10', 'r1', 'n8', 'h2', 'h3', 'h4', 'h8', 'h9', 'g10', 'g11', 'n24'],
+  };
+  const shopOf = id => Object.keys(PROP_SHOP).find(k => PROP_SHOP[k].includes(id)) || 'general';
+  const SHOP_TABS = {
+    seed: ['도구·화단', '정원', '방', '온실'], flower: ['정원', '방', '온실'], furniture: ['정원', '방', '온실'], general: ['정원', '방', '온실', '꾸미기', '다이아'],
+  };
+  const tabs = () => SHOP_TABS[st.shop] || SHOP_TABS.general;
   function items() {
-    const t = st.tab, out = [];
-    const prop = place => PROPS.filter(p => p.place === place).map(p => ({ kind: 'prop', id: p.id, name: p.name, cost: p.cost, img: 'prop_' + p.id }));
+    const nm = tabs()[st.tab], out = [];
+    const prop = place => PROPS.filter(p => p.place === place && shopOf(p.id) === st.shop).map(p => ({ kind: 'prop', id: p.id, name: p.name, cost: p.cost, img: 'prop_' + p.id }));
     const mails = kinds => SHOP_MAILS.filter(m => kinds.includes(m.item.kind)).map(m => ({ kind: 'mail', id: m.id, name: m.item.name, cost: m.cost, req: m.requires, img: IMG[m.id], k: m.item.kind, v: m.item.v || 0 }));
-    if (t === 0) return mails(['bed', 'can', 'glove']).concat(prop('garden'));
-    if (t === 1) return prop('room');
-    if (t === 2) return prop('gh');
-    if (t === 3) return mails(['outfit']).map(i => Object.assign(i, { tag: '옷' })).concat([{ kind: 'soon', id: 'deco_soon', name: '시계 틀 · 게시판 · 우체통', soon: true, tag: '곧 들어와요' }]);
+    if (nm === '도구·화단') return mails(['bed', 'can', 'glove']);
+    if (nm === '정원') return prop('garden');
+    if (nm === '방') return prop('room');
+    if (nm === '온실') return prop('gh');
+    if (nm === '꾸미기') return mails(['outfit']).map(i => Object.assign(i, { tag: '옷' })).concat([{ kind: 'soon', id: 'deco_soon', name: '시계 틀 · 게시판 · 우체통', soon: true, tag: '곧 들어와요' }]);
     return HG.map(h => ({ kind: 'hg', id: h.id, name: h.name, cost: h.cost, gem: true, img: 'hg_' + h.min }));
   }
 
@@ -75,6 +92,11 @@ function removeProp(id) {
     const im = it.img && G.img[it.img], ib = [x + 24, y + 14, w - 48, h * (g.pad ? .33 : .38)];
     if (im) { const k = Math.min(ib[2] / im.width, ib[3] / im.height); ctx.drawImage(im, ib[0] + (ib[2] - im.width * k) / 2, ib[1] + (ib[3] - im.height * k) / 2, im.width * k, im.height * k); }
     else if (it.tag) text(it.tag, x + w / 2, ib[1] + ib[3] / 2, 46, '#b89a72', 'center');
+    if (it.kind === 'prop' && (PROP_EFFECT[it.id] || PROP_SPECIAL[it.id])) {                         // 소품 능력 표시
+      const t = propEffectText(it.id), fs = g.pad ? 22 : 26; ctx.font = font(fs, 700); const tw = ctx.measureText(t).width + 24, ty = ib[1] + ib[3] - fs - 6;
+      rrect(x + w / 2 - tw / 2, ty, tw, fs + 12, (fs + 12) / 2); ctx.fillStyle = own ? 'rgba(90,150,80,.92)' : 'rgba(110,80,45,.85)'; ctx.fill();
+      text(t, x + w / 2, ty + (fs + 12) / 2 + 1, fs, '#fff', 'center');
+    }
     const nm = it.name.length > 9 ? 28 : 32;
     text(it.name, x + w / 2, y + h * (g.pad ? .47 : .55), nm, '#6e4b28', 'center');
     if (it.cost != null) { const cx = x + w / 2; const py = y + h * (g.pad ? .58 : .67); (it.gem ? drawGem : drawCoin)(cx - 40, py, it.gem ? 20 : 18); text(String(it.cost), cx - 14, py + 2, 34, '#b07a12'); }
@@ -82,6 +104,7 @@ function removeProp(id) {
     const br = [x + 24, y + h - 100, w - 48, 80];
     let label, dis = false, fn;
     if (it.soon) { label = '준비 중'; dis = true; }
+    else if (it.kind === 'prop' && own && PROP_SPECIAL[it.id]) { label = it.id === 'console' ? '방에 있어요' : '게시판에 있어요'; dis = true; }
     else if (it.kind === 'prop' && own) { const pl = isPlaced(it.id); label = pl ? '치우기' : '놓기'; fn = () => { if (pl) { removeProp(it.id); say('치웠어요.', 0); } else if (placeProp(it.id)) say('잘 어울려요.', 2); else say('자리가 다 찼어요. 놓인 것을 먼저 치워 주세요.', 3); }; }
     else if (it.kind === 'hg') { label = '구매'; dis = G.S.gems < it.cost; fn = () => buyHourglass(it); }
     else if (own) { label = '구매 완료'; dis = true; }
@@ -106,8 +129,12 @@ function removeProp(id) {
     if (it.req && !G.S.owned[it.req]) return;
     if (G.S.coins < it.cost) { say('돈이 조금 모자라요.', 3); toast('돈이 모자라요'); return; }
     if (it.kind === 'prop') {
-      G.S.coins -= it.cost; G.S.owned['p_' + it.id] = true;
+      const cp = st.shop === 'seed' && Story.coupon() ? Math.round(it.cost * .9) : it.cost;   // 씨앗 가게 할인권 1회
+      if (cp < it.cost) { Story.useCoupon(); toast(`할인권 사용 · ${it.cost - cp}골드 아꼈어요`); }
+      G.S.coins -= cp; G.S.owned['p_' + it.id] = true;
       const ok = placeProp(it.id), hm = giveHint(); save();
+      if (it.id === 'console') setTimeout(() => { say('방 바닥에 게임기를 놓아 두었어요. 눌러서 「꽃밭 서바이벌」을 해 보세요!', 2); toast('새 놀이 「꽃밭 서바이벌」이 열렸어요!', 3500); }, 400);
+      if (PROP_PLAY[it.id]) setTimeout(() => { say(`${it.name}을(를) 방에 놓고 눌러 보세요! 「${PROP_PLAY[it.id]}」 놀이를 할 수 있어요.`, 2); toast(`새 놀이 「${PROP_PLAY[it.id]}」가 열렸어요!`, 3500); }, 400);
       toast(`${it.name} 구매 완료!${ok ? '' : ' (자리가 없어 보관해 둬요)'}${hm}`, hm ? 4200 : 2200);
     } else buy({ id: it.id, offer: { name: it.name, cost: it.cost, kind: it.k, v: it.v } });
     say('고맙습니다.', 1); G.dirty = true;
@@ -130,8 +157,9 @@ function removeProp(id) {
     const now = Date.now(); let col = 0;
     if (now < st.talkUntil) col = Math.floor(now / 150) % 2 ? 1 : 0;
     if (now % 4200 < 150) col = 2;
-    const row = now < st.faceUntil ? st.face : 0, im = ownerImg(row, col) || ownerImg(0, 0); if (!im) return;
-    const w = g.owner.w, h = w * im.height / im.width, x = g.owner.x - w / 2, y = g.owner.y - h;
+    const row = now < st.faceUntil ? st.face : 0, vk = G.img[`vil_kp_${st.shop}_${col === 1 ? 't' : row ? 's' : 'n'}`], im = vk || ownerImg(row, col) || ownerImg(0, 0); if (!im) return;
+    const base = vk ? G.img[`vil_kp_${st.shop}_n`] || im : im;                 // 표정이 바뀌어도 크기는 기본 얼굴에 맞춰 고정
+    const h = g.owner.w * base.height / base.width, w = h * im.width / im.height, x = g.owner.x - w / 2, y = g.owner.y - h;
     ctx.drawImage(im, x, y, w, h); st.ownerRect = [x, y, w, h];
   }
   function drawBubble(g) {
@@ -143,25 +171,27 @@ function removeProp(id) {
   }
 
   G.screens.shop = {
-    onEnter(prev) { st.from = prev && prev !== 'shop' ? prev : 'garden'; st.scroll = 0; st.tab = 0; say('어서 오세요.', 1); },
+    onEnter(prev) { st.from = prev && prev !== 'shop' ? prev : 'garden'; st.scroll = 0; st.tab = 0; st.shop = G._shopId || 'general'; G._shopId = 0; say('어서 오세요.', 1); },
     onMode() { st.scroll = 0; },
     busy: () => true,
     draw() {
       const g = geo(), S = G.S;
       const maxScroll = Math.max(0, st.contentH - g.list[3]); st.scroll = Math.min(Math.max(st.scroll, 0), maxScroll);
-      const key = [st.tab, Math.round(st.scroll), S.coins, S.gems, Object.keys(S.owned).length, S.beds.length, S.can, S.glove, decorKey(), S.mails.filter(m => !m.read).length].join('|');
+      const key = [st.shop, st.tab, Math.round(st.scroll), S.coins, S.gems, Object.keys(S.owned).length, S.beds.length, S.can, S.glove, decorKey(), S.mails.filter(m => !m.read).length].join('|');
       cachedLayer('shop', key, () => {
         st.btns = []; st.list = g.list;
         ctx.fillStyle = '#e7cfa3'; ctx.fillRect(0, 0, G.L.W, G.L.H);
         ctx.save(); if (g.clip) { ctx.beginPath(); ctx.rect(...g.clip); ctx.clip(); }
-        const bg = G.img.bg_shop; if (bg) ctx.drawImage(bg, ...g.bg);
+        const vb = G.img['vil_st_' + st.shop];                           // 마을 가게 배경(없으면 예전 상점 배경)
+        if (vb) { const k = Math.max(G.L.W / vb.width, G.L.H / vb.height); ctx.drawImage(vb, (G.L.W - vb.width * k) / 2, (G.L.H - vb.height * k) / 2, vb.width * k, vb.height * k); }
+        else { const bg = G.img.bg_shop; if (bg) ctx.drawImage(bg, ...g.bg); }
         ctx.restore();
         const [px, py, pw, ph] = g.panel;
         rrect(px, py, pw, ph, 40); ctx.fillStyle = 'rgba(255,248,232,.94)'; ctx.fill(); ctx.lineWidth = 7; ctx.strokeStyle = '#9b7148'; ctx.stroke();
-        TABS.forEach((nm, i) => {
+        tabs().forEach((nm, i) => {
           const r = [g.tabs.x + i * (g.tabs.w + g.tabs.gap), g.tabs.y, g.tabs.w, g.tabs.h];
           button(r, nm, { active: i === st.tab, size: g.pad ? 34 : 32 });
-          st.btns.push({ rect: r, fn: () => { st.tab = i; st.scroll = 0; const l = ['어서 오세요.', '소품이 많이 들어왔어요.', '온실에 어울리는 것들이에요.', '꾸미기 물건이에요.', '모래시계가 있어요.'][i]; say(l, 2); } });
+          st.btns.push({ rect: r, fn: () => { st.tab = i; st.scroll = 0; say(`${nm} 물건이에요.`, 2); } });
         });
         const list = items(), rows = Math.ceil(list.length / g.cols);
         st.contentH = rows * (g.ch + g.gap) - g.gap;

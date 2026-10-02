@@ -49,11 +49,46 @@
   const SOON = { voice: '말로 쓰기', today: '오늘 기록', calendar: '달력' };
   const rects = () => objs().map(o => ({ ...o, rc: [o.r[0] * G.L.W, o.r[1] * G.L.H, (o.r[2] - o.r[0]) * G.L.W, (o.r[3] - o.r[1]) * G.L.H] }));
   const backupRect = () => { const [sx, sy, sw, sh] = G.L.save; return [sx + sw - 300, sy + sh + 10, 300, G.mode === 'pad' ? 70 : 84]; };
+  // 게임기(잡화점에서 산 뒤): 방 바닥 러그 위에 놓임 → 꽃밭 서바이벌
+  function consoleRect() {
+    if (!G.S.owned.p_console) return null;
+    const c = newPhone() ? { x: .19, y: .695, w: .17 } : G.mode === 'pad' ? { x: .65, y: .80, w: .1 } : { x: .19, y: .645, w: .17 };
+    const w = c.w * G.L.W, h = w * 260 / 420; return [c.x * G.L.W - w / 2, c.y * G.L.H - h, w, h];
+  }
   function open(id) {
+    if (id === 'game') return openMini('survival');
     if (id === 'voice') return openDiary();
     if (id === 'today') return openToday();
     if (id === 'calendar') return openCalendar();
   }
+  // 미니게임 「꽃밭 서바이벌」: 1분 버틸 때마다 다이아 1개, 하루 3개까지(그 뒤로도 게임은 계속 가능)
+  const MINI_CAP = 3;
+  function miniLeft() { const S = G.S, d = todayKey(); if (!S.mini || S.mini.day !== d) S.mini = { day: d, got: 0 }; return Math.max(0, MINI_CAP - S.mini.got); }
+  // 놀이별 하루 보상 횟수 (서바이벌은 다이아 3개 따로)
+  const PLAY_CAP = { carrot: 2 };
+  function playLeft(g) { const S = G.S, d = todayKey(); S.plays = S.plays || {}; if (!S.plays[g] || S.plays[g].day !== d) S.plays[g] = { day: d, n: 0 }; return Math.max(0, PLAY_CAP[g] - S.plays[g].n); }
+  function openMini(game) {
+    if (document.getElementById('miniFrame')) return;
+    const f = document.createElement('iframe'); f.id = 'miniFrame'; f.src = game === 'carrot' ? 'carrot.html?embed=1&left=' + playLeft('carrot') : 'minigame.html?embed=1&left=' + miniLeft();
+    f.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:50;background:#5d8a3a';
+    document.body.appendChild(f);
+    if (typeof SFX !== 'undefined' && SFX.bgmPause) SFX.bgmPause();
+  }
+  window.addEventListener('message', e => {
+    const m = e.data || {};
+    if (m.type === 'mini-end' && m.game === 'carrot') {
+      const g = Math.min(100, Math.max(0, m.gold | 0));
+      if (g > 0 && playLeft('carrot') > 0) { G.S.plays.carrot.n++; G.S.coins += g; save(); toast(`당근 뽑기 +${g}골드`); }
+      G.dirty = true; return;
+    }
+    if (m.type === 'mini-end') {
+      if (typeof Story !== 'undefined') Story.mini(m.sec);
+      const give = Math.min(Math.max(0, m.give | 0), miniLeft());
+      if (give > 0) { G.S.mini.got += give; G.S.gems += give; save(); toast(`미니게임 다이아 +${give}`); }
+      G.dirty = true;
+    }
+    if (m.type === 'mini-exit') { const f = document.getElementById('miniFrame'); if (f) f.remove(); G.dirty = true; }
+  });
   function sparkle(x, y, s, ph) {                       // 눌러 보라는 은은한 반짝임
     const a = .45 + .4 * Math.sin(Date.now() / 420 + ph), k = s * (.8 + .2 * Math.sin(Date.now() / 420 + ph));
     ctx.save(); ctx.translate(x, y); ctx.globalAlpha = a; ctx.fillStyle = '#fffbe0'; ctx.shadowColor = 'rgba(255,220,120,.9)'; ctx.shadowBlur = s * .6 * (G.scale || 1);
@@ -89,10 +124,12 @@
         drawDecor('room');
         drawTopInfo();
       });
+      { const cr = consoleRect(); if (cr && G.img.prop_console) { ctx.save(); ctx.globalAlpha = .2; ctx.fillStyle = '#6b4a2a'; ctx.beginPath(); ctx.ellipse(cr[0] + cr[2] / 2, cr[1] + cr[3] * .97, cr[2] * .45, cr[3] * .1, 0, 0, 7); ctx.fill(); ctx.restore(); ctx.drawImage(G.img.prop_console, ...cr); } }
       drawChar();
       { const b = backupRect(); button(b, '☁ 저장 보관', { size: G.mode === 'pad' ? 30 : 34 }); const c = soundRect(); button(c, '♪ 소리·진동', { size: G.mode === 'pad' ? 30 : 34 }); }
       const s = G.mode === 'pad' ? 34 : 40;
       rects().forEach((o, i) => sparkle(o.rc[0] + o.rc[2] * .5, o.rc[1] + o.rc[3] * .18, s, i * 1.7));
+      { const cr = consoleRect(); if (cr) sparkle(cr[0] + cr[2] * .5, cr[1] - s * .3, s, 9); }
     },
     up(p, tap) {
       if (!tap) return;
@@ -101,6 +138,8 @@
         pose = REACT[Math.floor(Math.random() * REACT.length)]; poseUntil = Date.now() + 2200; G.dirty = true; return;
       }
       if (inRect(p, backupRect())) { openBackup(); return; }
+      { const cr = consoleRect(); if (cr && inRect(p, cr)) { openMini('survival'); return; } }
+      { const rb = decorRect('room', 'r5'); if (rb && inRect(p, rb)) { openMini('carrot'); return; } }   // 토끼 인형 → 당근 뽑기
       if (inRect(p, soundRect())) { openSound(); return; }
       const hit = rects().find(o => inRect(p, o.rc));
       if (hit) open(hit.id);

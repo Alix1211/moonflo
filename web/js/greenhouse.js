@@ -23,7 +23,7 @@
   let uid = 1;
   // 테스트용: 새로 생기는 칩 중 이 비율만큼 특수탄으로 나옴 (테스트 끝나면 0으로)
   const TEST_SP = 0, SPS = ['row', 'col', 'wideRow', 'wideCol', 'bomb'];
-  const rndSp = () => TEST_SP && Math.random() < TEST_SP ? SPS[Math.floor(Math.random() * SPS.length)] : null;
+  const rndSp = () => (TEST_SP && Math.random() < TEST_SP) || Math.random() < bonus('sp') * .06 ? SPS[Math.floor(Math.random() * SPS.length)] : null;   // 소품 능력: 특수칩이 가끔 그냥 나옴
   const tile = (t, sp = null) => ({ t, sp, id: uid++, dy: 0, ox: 0, oy: 0, sc: 1 });
 
   const board = () => G.L.gh.board;
@@ -228,7 +228,7 @@
     // 포인트
     st.combo = (st.combo || 0) + 1;                                   // 연속으로 터질수록 점수 배수
     const mult = Math.min(st.combo, RULES.comboMax);
-    for (const k of clear) { const [r, c] = k.split(',').map(Number); const f = FLOWERS[st.g[r][c].t].id; G.S.pts[f] += mult; }
+    for (const k of clear) { const [r, c] = k.split(',').map(Number); const f = FLOWERS[st.g[r][c].t].id; G.S.pts[f] += mult + (Math.random() < bonus('pts') ? 1 : 0); }
     if (fired.size) SFX.both('special'); else SFX.play('pop', st.combo);
     if (st.combo >= 2) { SFX.play('combo', st.combo, 30); SFX.vib('combo', st.combo); }
     if (st.combo >= 2 && typeof buddyCombo === 'function') buddyCombo(st.combo);
@@ -367,10 +367,10 @@
     const cw = (w - gap * (cols - 1)) / cols, ch = Math.min(cw * 1.08, (h - gap * (rows - 1)) / rows);
     return FLOWERS.map((_, i) => [x + (i % cols) * (cw + gap), y + Math.floor(i / cols) * (ch + gap), cw, ch]);
   };
-  const canMake = i => Math.floor(G.S.pts[FLOWERS[i].id] / RULES.seedCost);
+  const canMake = i => Math.floor(G.S.pts[FLOWERS[i].id] / seedCost());
   function makeSeed(i) {
     const f = FLOWERS[i]; if (canMake(i) < 1) return false;
-    G.S.pts[f.id] -= RULES.seedCost; G.S.seeds[f.id]++; save(); G.dirty = true;
+    G.S.pts[f.id] -= seedCost(); G.S.seeds[f.id]++; save(); G.dirty = true;
     if (typeof buddyCheer === 'function') buddyCheer();
     const rc = gaugeRects()[i]; floatText(`${f.name} 씨앗 +1`, rc[0] + rc[2] / 2, rc[1], '#fff6b0'); return true;
   }
@@ -385,7 +385,7 @@
       if (can) { rrect(rc[0] - 6, rc[1] - 2, rc[2] + 12, rc[3] + 4, 22); ctx.fillStyle = 'rgba(255,240,160,.44)'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,236,140,.95)'; ctx.stroke(); }
       const k = Math.min(1, rc[3] / 150), s = Math.min(rc[2] * .7, rc[3] * .5); imgFit(G.img[`block_${f.id}`], rc[0] + rc[2] / 2, rc[1] + rc[3] * (.26 + (1 - k) * .04), s);
       otext(f.name, rc[0] + rc[2] / 2, rc[1] + rc[3] * .64, Math.round((pad ? 30 : 28) * Math.max(.8, k)), '#fff');
-      otext(can ? `씨앗 ${can}개` : `${p % RULES.seedCost}/${RULES.seedCost}`, rc[0] + rc[2] / 2, rc[1] + rc[3] * .87, Math.round((pad ? 34 : 32) * Math.max(.8, k)), can ? '#fff2a8' : '#f4fbe9');
+      otext(can ? `씨앗 ${can}개` : `${p % seedCost()}/${seedCost()}`, rc[0] + rc[2] / 2, rc[1] + rc[3] * .87, Math.round((pad ? 34 : 32) * Math.max(.8, k)), can ? '#fff2a8' : '#f4fbe9');
     });
     const total = FLOWERS.reduce((a, _, i) => a + canMake(i), 0);
     button(G.L.gh.makeAll, total ? `모두 만들기 (${total})` : '모두 만들기', { disabled: !total, size: pad ? 44 : 46, pressed: G.pressBtn === 'all' });
@@ -473,7 +473,7 @@
       st.sel = h; G.dirty = true;
     },
     buttonOpt(id) {
-      if (id === 'craft') { const n = FLOWERS.reduce((a, f) => a + Math.floor(G.S.pts[f.id] / RULES.seedCost), 0); return { badge: n }; }
+      if (id === 'craft') { const n = FLOWERS.reduce((a, f) => a + Math.floor(G.S.pts[f.id] / seedCost()), 0); return { badge: n }; }
       if (id === 'orders') return { badge: G.S.orders.filter(canDeliver).length || 0 };
       if (id === 'shop') return {};
       return {};
@@ -512,7 +512,7 @@ function openCraft() {
       const cols = pad ? 2 : 1, gap = pad ? 20 : 16, ch = 150, cw = (area[2] - gap * (cols - 1)) / cols, rowsN = Math.ceil(FLOWERS.length / cols);
       scrollBegin(this, area, rowsN * (ch + gap) - gap);
       FLOWERS.forEach((f, i) => {
-        const rc = [area[0] + (i % cols) * (cw + gap), area[1] + Math.floor(i / cols) * (ch + gap), cw, ch], p = G.S.pts[f.id], can = Math.floor(p / RULES.seedCost);
+        const rc = [area[0] + (i % cols) * (cw + gap), area[1] + Math.floor(i / cols) * (ch + gap), cw, ch], p = G.S.pts[f.id], can = Math.floor(p / seedCost());
         card(rc, can > 0);
         const s = rc[3] * .8; imgFit(G.img[`flower_${f.id}_seed`], rc[0] + 20 + s / 2, rc[1] + rc[3] / 2, s);
         text(f.name, rc[0] + s + 40, rc[1] + rc[3] * .34, 40, '#6e4b28');
@@ -520,13 +520,13 @@ function openCraft() {
         const br = [rc[0] + rc[2] - 190, rc[1] + rc[3] / 2 - 46, 170, 92];
         button(br, '만들기', { disabled: !can, size: 36 });
         const hit = scrollHit(this, area, br);
-        if (hit) this.btns.push({ rect: hit, disabled: !can, fn: () => { G.S.pts[f.id] -= RULES.seedCost; G.S.seeds[f.id]++; save(); toast(`${f.name} 씨앗 +1`); } });
+        if (hit) this.btns.push({ rect: hit, disabled: !can, fn: () => { G.S.pts[f.id] -= seedCost(); G.S.seeds[f.id]++; save(); toast(`${f.name} 씨앗 +1`); } });
       });
       scrollEnd(this, area);
-      const any = FLOWERS.some(f => G.S.pts[f.id] >= RULES.seedCost);
+      const any = FLOWERS.some(f => G.S.pts[f.id] >= seedCost());
       button(all, '모두 만들기', { disabled: !any, size: 42 });
       this.btns.push({ rect: all, disabled: !any, fn: () => {
-        let n = 0; for (const f of FLOWERS) { const k = Math.floor(G.S.pts[f.id] / RULES.seedCost); G.S.pts[f.id] -= k * RULES.seedCost; G.S.seeds[f.id] += k; n += k; }
+        let n = 0; for (const f of FLOWERS) { const k = Math.floor(G.S.pts[f.id] / seedCost()); G.S.pts[f.id] -= k * seedCost(); G.S.seeds[f.id] += k; n += k; }
         save(); toast(`씨앗 ${n}개를 만들었어요`);
       } });
     },
