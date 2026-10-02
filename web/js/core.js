@@ -468,6 +468,7 @@ let _bgc = null;
 function fillSides() {
   const ww = window.innerWidth, wh = window.innerHeight, cw = parseFloat(cv.style.width) || ww, ch = parseFloat(cv.style.height) || wh;
   if (Math.abs(cw - ww) < 2 && Math.abs(ch - wh) < 2) return;
+  const nt = Date.now(); if (nt - (G._fillTs || 0) < 1500) return; G._fillTs = nt; // 흐린 양옆 채움은 1.5초에 한 번만(매 프레임 다시 그리면 느린 기기에서 프레임 드랍)
   if (!_bgc) _bgc = document.getElementById('bgfill'); if (!_bgc) return;
   const x = _bgc.getContext('2d'), sc = Math.max(ww / cw, wh / ch);
   x.drawImage(cv, (ww - cw * sc) / 2 * 96 / ww, (wh - ch * sc) / 2 * 96 / wh, cw * sc * 96 / ww, ch * sc * 96 / wh);
