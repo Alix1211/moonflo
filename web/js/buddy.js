@@ -205,7 +205,7 @@
     if (!B.nextWalk) B.nextWalk = now + rnd(6, 12) * 1000;
     if (G.screen === 'garden' && !G.popup && !B.talk && !B.yawn && !B.walker && now >= B.nextWalk) { spawnWalker(); G.dirty = true; }
     const idle = (RULES.idleYawnMin || 4) * 60000;
-    if (!B.yawn && !B.talk && !G.popup && ['garden', 'greenhouse', 'room'].includes(G.screen) && now - G.lastTouch > idle && now - B.lastYawn > idle) {
+    if (false && !B.yawn && !B.talk && !G.popup && ['garden', 'greenhouse', 'room'].includes(G.screen) && now - G.lastTouch > idle && now - B.lastYawn > idle) {
       B.yawn = { t0: now }; B.cheer = null; G.dirty = true;
     }
   };
