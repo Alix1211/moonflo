@@ -69,6 +69,7 @@ function refreshOrders() {
 }
 function canDeliver(o) { for (const id in o.need) if ((G.S.flowers[id] || 0) < o.need[id]) return false; return true; }
 function deliver(o) {
+  if (!G.S.orders.includes(o) || !canDeliver(o)) return;   // 빠르게 여러 번 눌러도 한 번만 납품
   for (const id in o.need) G.S.flowers[id] -= o.need[id];
   const cb = Math.round(o.coins * bonus('coin')); if (cb) toast(`소품 덕분에 돈 +${cb}`);
   G.S.coins += o.coins + cb; G.S.doneToday++; G.S.stats.orders = (G.S.stats.orders || 0) + 1;

@@ -137,7 +137,7 @@ function loadState() {
 function fixState(S) {  // 나중에 꽃·화단이 늘어도 옛 저장이 깨지지 않게
   const d = newState();
   for (const k in d) if (S[k] === undefined) S[k] = d[k];
-  for (const f of FLOWERS) for (const k of ['seeds', 'flowers', 'pts']) if (S[k][f.id] === undefined) S[k][f.id] = 0;
+  for (const f of FLOWERS) for (const k of ['seeds', 'flowers', 'pts']) if (S[k][f.id] === undefined || S[k][f.id] < 0) S[k][f.id] = 0;   // 음수가 된 칸은 0으로
   return S;
 }
 let saveTimer = 0;
