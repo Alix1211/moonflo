@@ -20,7 +20,7 @@
       for (const L of list) {
         const id = 'r_' + L.id; if (G.S.mails.some(m => m.id === id)) continue;
         if (L.at && new Date(L.at).getTime() > now) continue;            // 아직 도착 전(택배 30분)
-        const m = { id, from: L.from || '', body: L.body || '', read: false }, fl = parseFl(L.flowers);
+        const m = { id, from: String(L.from || ''), body: String(L.body == null ? '' : L.body), read: false }, fl = parseFl(L.flowers);
         if (L.coins || L.gems || L.hint || Object.keys(fl).length) { m.gift = { coins: +L.coins || 0, gems: +L.gems || 0, hint: +L.hint || 0 }; if (Object.keys(fl).length) m.gift.flowers = fl; gifts++; }
         G.S.mails.push(m); n++;
       }

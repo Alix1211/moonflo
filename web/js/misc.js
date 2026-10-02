@@ -238,6 +238,7 @@ function buy(mail) {
   save(); toast(`${o.name} 구매 완료!`);
 }
 function wrap(str, x, y, w, size, color) {
+  str = str == null ? '' : String(str);   // 시트에서 숫자 등이 와도 멈추지 않게
   ctx.font = font(size, 500); let line = '', yy = y;
   for (const ch of str) {
     if (ch === '\n' || ctx.measureText(line + ch).width > w) { text(line, x, yy, size, color, 'left', false, 500); yy += size * 1.5; line = ch === '\n' ? '' : ch; }
