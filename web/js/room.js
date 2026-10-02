@@ -63,7 +63,7 @@
   }
   // 달해(가분수 캐릭터): 러그 위에 서 있고, 누르면 잠깐 다른 동작을 함
   const CH = { pad: { x: .47, y: .80, h: .54 }, phone: { x: .5, y: .70, h: .27 } };
-  const REACT = ['wave', 'jump', 'cheer', 'flower', 'yawn'];
+  const REACT = ['wave', 'jump', 'cheer', 'flower'];
   let pose = 'stand', poseUntil = 0;
   function charRect() {
     const c = newPhone() ? { x: .5, y: .86, h: .30 } : CH[G.mode], im = G.img['sd_' + pose] || G.img.sd_stand; if (!im) return null;
