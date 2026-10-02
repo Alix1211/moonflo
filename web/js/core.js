@@ -93,6 +93,7 @@ function alphaBox(name) {
 }
 
 /* ---------- 화면 크기 ---------- */
+function liteOn() { try { return localStorage.getItem('liteScreen') === '1'; } catch (e) { return false; } }
 function resize() {
   if (document.activeElement && /^ov_/.test(document.activeElement.id)) return;   // 글자 입력 중 키보드가 올라와도 화면 배치는 그대로
   const w = window.innerWidth, h = window.innerHeight;
@@ -104,7 +105,7 @@ function resize() {
   const cw = Math.round(W * s), ch = Math.round(H * s);
   cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
   cv.style.left = Math.round((w - cw) / 2) + 'px'; cv.style.top = Math.round((h - ch) / 2) + 'px';
-  const dpr = Math.min(window.devicePixelRatio || 1, W / cw);   // 기기 해상도 이상은 안 씀
+  const dpr = Math.min(window.devicePixelRatio || 1, W / cw) * (liteOn() ? .7 : 1);   // 기기 해상도 이상은 안 씀 · 가벼운 화면이면 70%로 그림
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
   G.dirty = true;
 }

@@ -36,7 +36,10 @@
         const tr = [x, y + 20 + 3 * (bh + 22), w, bh];
         button(tr, '진동 시험해 보기', { size: fs });
         this.btns.push({ rect: tr, fn: () => { const wasOn = G.S.opt.vib; G.S.opt.vib = 1; SFX.vib('mixOk'); G.S.opt.vib = wasOn; this.info = (window.FarmBridge && FarmBridge.vibInfo ? FarmBridge.vibInfo() : '폰 앱이 아니라서 진동을 못 씁니다') + ' / 결과:' + (SFX.lastVib || '-'); } });
-        if (this.info) wrap(this.info, x, tr[1] + bh + 20, w, pd ? 28 : 32, '#6e4b28');
+        const lr = [x, tr[1] + bh + 22, w, bh], lite = liteOn();          // 이 기기에만 저장(다른 기기·보관 파일엔 영향 없음)
+        button(lr, `가벼운 화면(이 기기만)  :  ${lite ? '켜짐' : '꺼짐'}`, { size: fs, active: lite });
+        this.btns.push({ rect: lr, fn: () => { try { localStorage.setItem('liteScreen', lite ? '0' : '1'); } catch (e) {} resize(); } });
+        if (this.info) wrap(this.info, x, lr[1] + bh + 20, w, pd ? 28 : 32, '#6e4b28');
       },
     });
   }
