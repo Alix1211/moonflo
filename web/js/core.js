@@ -404,6 +404,9 @@ function endPtr(e, cancel) {
   ptr.down = false; const p = toLogical(e);
   const was = G.pressBtn; G.pressBtn = -1; G.dirty = true;
   if (cancel) { if (ptr.target === 'screen') { const s = G.screens[G.screen]; s.up && s.up(p, false); } return; }
+  // 한 손으로 여러 번 눌러도 한 번만: 창·아래 버튼·가게·방은 0.35초 안의 두 번째 누름을 무시 (정원·온실 퍼즐은 그대로)
+  const calm = ptr.target === 'popup' || ptr.target === 'btn' || (ptr.target === 'screen' && ['shop', 'village', 'room'].includes(G.screen));
+  if (calm) { const t = Date.now(); if (t - (G._lastTap || 0) < 350) return; G._lastTap = t; }
   if (ptr.target === 'popup') { if (!ptr.moved || was === 'close') popupTap(p); return; }
   if (ptr.target === 'btn') { const b = bottomButtons()[was]; if (b && inRect(p, b.rect)) onButton(b.id); return; }
   if (ptr.target === 'fairy') { G.screens[G.screen].fairyTap(); return; }
