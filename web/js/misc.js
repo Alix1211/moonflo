@@ -129,7 +129,7 @@ function openOrders() {
 /* ---------- 우체통 ---------- */
 // 편지는 나중에 구글 시트에서 받아 옴. 지금은 저장된 편지만 보여 줌.
 function openMail() {
-  let open = null, writing = false, sent = '';
+  let open = null, writing = false, sent = '', gifting = null;
   if (window.pullMails) pullMails();
   openPopup({
     title: '우체통', big: 'smile', vals: {},
@@ -144,6 +144,29 @@ function openMail() {
           const t = ((this.vals && this.vals.reply) || '').trim(); if (!t) { toast('먼저 편지를 적어 주세요'); return; }
           const ok = await sendReply(t); writing = false; this.vals = {}; sent = ok ? '편지를 보냈어요' : '보냈어요 (인터넷이 되면 전해져요)'; toast(sent, 3000); G.dirty = true; } });
         button(b2, '그만두기', { size: 46 }); this.btns.push({ rect: b2, fn: () => { writing = false; } });
+        return;
+      }
+      if (gifting) {                                   // 선물 보내기: 골드·꽃 고르기 (하루 3번, 30분 뒤 도착)
+        const [x, y, w, h] = r, pd = G.mode === 'pad', fs = pd ? 34 : 40, gl = giftLimits();
+        const tot = Object.values(gifting.fl).reduce((a, b) => a + b, 0);
+        text(`오늘 보낼 수 있는 선물 ${giftLeft()}번 · 30분 뒤 도착해요`, x, y + 20, fs - 4, '#9b7148');
+        text('골드', x, y + 20 + fs * 1.8, fs, '#6e4b28');
+        [0, 100, 300, 500].forEach((c, i) => { const bw = (w - 140 - 3 * 14) / 4, rc = [x + 140 + i * (bw + 14), y + 20 + fs * 1.1, bw, fs * 1.6], dis = c > G.S.coins;
+          button(rc, c ? String(c) : '없음', { size: fs - 4, active: gifting.coins === c, disabled: dis }); this.btns.push({ rect: rc, disabled: dis, fn: () => { gifting.coins = c; } }); });
+        text(`꽃 (눌러서 한 송이씩 · ${tot}/${gl.flowers})`, x, y + 20 + fs * 3.6, fs, '#6e4b28');
+        const fl = FLOWERS.filter(f => (G.S.flowers[f.id] || 0) > 0), cols = pd ? 6 : 4, gap = 12, cw = (w - gap * (cols - 1)) / cols, ch = pd ? 120 : 150, fy = y + 20 + fs * 4.4;
+        if (!fl.length) text('보낼 꽃이 없어요', x, fy + 40, fs - 4, '#b89a72');
+        fl.slice(0, cols * 2).forEach((f, i) => { const rc = [x + (i % cols) * (cw + gap), fy + Math.floor(i / cols) * (ch + gap), cw, ch], n = gifting.fl[f.id] || 0;
+          card(rc, n > 0); imgFit(G.img[`flower_${f.id}_bloom`], rc[0] + cw / 2, rc[1] + ch * .4, ch * .55);
+          text(n ? `${n} / ${G.S.flowers[f.id]}` : String(G.S.flowers[f.id]), rc[0] + cw / 2, rc[1] + ch * .85, fs - 8, n ? '#c0522c' : '#8a6a44', 'center');
+          this.btns.push({ rect: rc, fn: () => { if (tot < gl.flowers && n < G.S.flowers[f.id]) gifting.fl[f.id] = n + 1; else toast(tot >= gl.flowers ? `꽃은 한 번에 ${gl.flowers}송이까지예요` : '가진 꽃을 다 담았어요'); } }); });
+        const by = pd ? y + h - 110 : fy + 2 * (ch + gap) + 30, bw = (w - 40) / 3, bh = pd ? 100 : 120;   // 폰은 큰 달해에 가리지 않게 위로
+        const b1 = [x, by, bw, bh], b2 = [x + bw + 20, by, bw, bh], b3 = [x + (bw + 20) * 2, by, bw, bh], can = (gifting.coins || tot) && giftLeft() > 0;
+        button(b1, '보내기', { size: fs, disabled: !can }); this.btns.push({ rect: b1, disabled: !can, fn: async () => {
+          const ok = await sendGift(gifting.coins, gifting.fl, `${RULES.mailFrom || ''}의 선물이에요`); gifting = null;
+          toast(ok ? '선물을 보냈어요! 30분 뒤에 도착해요' : '선물을 보내지 못했어요', 3200); G.dirty = true; } });
+        button(b2, '꽃 비우기', { size: fs }); this.btns.push({ rect: b2, fn: () => { gifting.fl = {}; } });
+        button(b3, '그만두기', { size: fs }); this.btns.push({ rect: b3, fn: () => { gifting = null; } });
         return;
       }
       if (open) {
@@ -185,7 +208,12 @@ function openMail() {
         }
         return;
       }
-      if (window.mailReady && mailReady()) { const wb = [r[0], r[1] + r[3] - 100, r[2], 100]; button(wb, '편지 쓰기', { size: 42 }); this.btns.push({ rect: wb, fn: () => { writing = true; this.vals = {}; } }); }
+      if (window.mailReady && mailReady()) {
+        const gr = window.giftReady && giftReady(), bw = gr ? (r[2] - 20) / 2 : r[2], wb = [r[0], r[1] + r[3] - 100, bw, 100];
+        button(wb, '편지 쓰기', { size: 42 }); this.btns.push({ rect: wb, fn: () => { writing = true; this.vals = {}; } });
+        if (gr) { const gb = [r[0] + bw + 20, r[1] + r[3] - 100, bw, 100], left = giftLeft();
+          button(gb, left ? `선물 보내기 (${left})` : '선물은 내일 또', { size: 42, disabled: !left }); this.btns.push({ rect: gb, disabled: !left, fn: () => { gifting = { coins: 0, fl: {} }; } }); }
+      }
       if (!list.length) { text('아직 온 편지가 없어요', r[0] + r[2] / 2, r[1] + r[3] / 2, 44, '#8a6a44', 'center'); return; }
       gridRects([r[0], r[1], r[2], Math.min(r[3] - 120, 6 * 150)], 1, 6, 16).forEach((rc, i) => {
         const m = list[list.length - 1 - i]; if (!m) return;
@@ -223,6 +251,7 @@ function giftText(g) {
   const p = [];
   if (g.hint) p.push(`연구 힌트 ${g.hint}`); if (g.coins) p.push(`돈 ${g.coins}`); if (g.gems) p.push(`다이아 ${g.gems}`);
   for (const id in (g.seeds || {})) p.push(`${FLOWER[id] ? FLOWER[id].name : id} 씨앗 ${g.seeds[id]}`);
+  for (const id in (g.flowers || {})) p.push(`${FLOWER[id] ? FLOWER[id].name : id} ${g.flowers[id]}송이`);
   for (const id in (g.items || {})) { const h = HG.find(x => x.id === id); p.push(`${h ? h.name : id} ${g.items[id]}`); }
   return p.join(' · ') || '선물';
 }
@@ -233,6 +262,7 @@ function claimGift(mail) {
   S.coins += g.coins || 0; S.gems += g.gems || 0;
   let hm = ''; for (let i = 0; i < (g.hint || 0); i++) hm += giveHint();
   for (const id in (g.seeds || {})) S.seeds[id] = (S.seeds[id] || 0) + g.seeds[id];
+  for (const id in (g.flowers || {})) S.flowers[id] = (S.flowers[id] || 0) + g.flowers[id];
   for (const id in (g.items || {})) addItem(id, g.items[id]);
   save(); G.dirty = true; toast(`선물을 받았어요! ${giftText(g)}${hm}`, hm ? 4200 : 2200);
 }
