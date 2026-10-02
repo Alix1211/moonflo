@@ -2,25 +2,26 @@
 'use strict';
 (() => {
   // 눌리는 물건 (그림 크기에 대한 비율: x1,y1,x2,y2). 물건보다 넉넉하게 잡음
+  // 물건 자리 (그림 크기에 대한 비율: x1,y1,x2,y2) — 물건에 딱 맞게. 누르는 범위는 조금 넓히고, 반짝이는 물건 바로 위
   const OBJ = {
     pad: [
-      { id: 'voice',    name: '말로 쓰기', r: [.755, .30, .905, .46] },   // 일기장 + 깃털 펜
-      { id: 'calendar', name: '달력',     r: [.905, .31, 1.0, .46] },     // 탁상 달력
-      { id: 'today',    name: '오늘 기록', r: [.165, .39, .36, .54] },     // 약통 + 혈압계 + 물컵
-      { id: 'today',    name: '운동',     r: [.79, .70, 1.0, .93] },      // 요가 매트 + 아령
+      { id: 'voice',    name: '말로 쓰기', r: [.775, .40, .90, .455] },   // 일기장 + 깃털 펜
+      { id: 'calendar', name: '달력',     r: [.91, .33, .995, .45] },     // 탁상 달력
+      { id: 'today',    name: '오늘 기록', r: [.18, .415, .34, .52] },     // 약통 + 혈압계 + 물컵
+      { id: 'today',    name: '운동',     r: [.80, .71, 1.0, .89] },      // 요가 매트 + 아령
     ],
     phone: [
-      { id: 'voice',    name: '말로 쓰기', r: [.58, .315, .86, .41] },
-      { id: 'calendar', name: '달력',     r: [.84, .325, 1.0, .40] },
-      { id: 'today',    name: '오늘 기록', r: [.08, .435, .46, .52] },
-      { id: 'today',    name: '운동',     r: [.68, .565, 1.0, .66] },
+      { id: 'voice',    name: '말로 쓰기', r: [.60, .36, .84, .40] },
+      { id: 'calendar', name: '달력',     r: [.85, .33, .99, .39] },
+      { id: 'today',    name: '오늘 기록', r: [.10, .445, .44, .50] },
+      { id: 'today',    name: '운동',     r: [.69, .57, 1.0, .65] },
     ],
   };
   const OBJ_NEW_PHONE = [                               // 새 세로 그림(노을·밤)은 구도가 달라 따로 잡음
-    { id: 'voice',    name: '말로 쓰기', r: [.58, .40, .86, .49] },
-    { id: 'calendar', name: '달력',     r: [.84, .37, 1.0, .46] },
-    { id: 'today',    name: '오늘 기록', r: [.08, .50, .46, .60] },
-    { id: 'today',    name: '운동',     r: [.68, .66, 1.0, .78] },
+    { id: 'voice',    name: '말로 쓰기', r: [.60, .41, .84, .46] },
+    { id: 'calendar', name: '달력',     r: [.845, .38, .98, .455] },
+    { id: 'today',    name: '오늘 기록', r: [.10, .52, .46, .585] },
+    { id: 'today',    name: '운동',     r: [.72, .665, 1.0, .765] },
   ];
   const soundRect = () => { const b = backupRect(); return [b[0] - b[2] - 16, b[1], b[2], b[3]]; };
   function openSound() {
@@ -47,7 +48,8 @@
   const newPhone = () => G.mode === 'phone' && roomStage() !== '';
   const objs = () => newPhone() ? OBJ_NEW_PHONE : OBJ[G.mode];
   const SOON = { voice: '말로 쓰기', today: '오늘 기록', calendar: '달력' };
-  const rects = () => objs().map(o => ({ ...o, rc: [o.r[0] * G.L.W, o.r[1] * G.L.H, (o.r[2] - o.r[0]) * G.L.W, (o.r[3] - o.r[1]) * G.L.H] }));
+  const rects = () => objs().map(o => { const mx = .025 * G.L.W, my = .025 * G.L.H, x = o.r[0] * G.L.W, y = o.r[1] * G.L.H, w = (o.r[2] - o.r[0]) * G.L.W, h = (o.r[3] - o.r[1]) * G.L.H;
+    return { ...o, top: [x + w / 2, y], rc: [x - mx, y - my, w + mx * 2, h + my * 2] }; });   // 누르는 범위는 물건보다 조금 넓게
   const backupRect = () => { const [sx, sy, sw, sh] = G.L.save; return [sx + sw - 300, sy + sh + 10, 300, G.mode === 'pad' ? 70 : 84]; };
   // 게임기(잡화점에서 산 뒤): 방 바닥 러그 위에 놓임 → 꽃밭 서바이벌
   function consoleRect() {
@@ -128,7 +130,7 @@
       drawChar();
       { const b = backupRect(); button(b, '☁ 저장 보관', { size: G.mode === 'pad' ? 30 : 34 }); const c = soundRect(); button(c, '♪ 소리·진동', { size: G.mode === 'pad' ? 30 : 34 }); }
       const s = G.mode === 'pad' ? 34 : 40;
-      rects().forEach((o, i) => sparkle(o.rc[0] + o.rc[2] * .5, o.rc[1] + o.rc[3] * .18, s, i * 1.7));
+      rects().forEach((o, i) => sparkle(o.top[0], o.top[1] - s * .5, s, i * 1.7));   // 물건 바로 위에서 반짝
       { const cr = consoleRect(); if (cr) sparkle(cr[0] + cr[2] * .5, cr[1] - s * .3, s, 9); }
     },
     up(p, tap) {
