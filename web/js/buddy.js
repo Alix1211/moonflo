@@ -67,9 +67,14 @@
   function drawYawn() {
     const y = B.yawn; if (!y) return;
     const t = Math.min(1, (Date.now() - y.t0) / 900), im = img('yawn'); if (!im) return;
-    ctx.fillStyle = `rgba(20,15,8,${.28 * t})`; ctx.fillRect(0, 0, G.L.W, G.L.H);
-    const h = Math.min(G.L.H * .96, G.L.W * (G.mode === 'pad' ? .98 : 1.25) * im.height / im.width), breath = 1 + Math.sin(Date.now() / 700) * .012;
-    sprite('yawn', G.L.W / 2, G.L.H * .99 + (1 - t) * 80, h * breath, { alpha: t });
+    if (!y.snap) {                                   // 시작할 때 화면을 한 번 찍어 작게 줄여 둠 → 늘려 그리면 흐릿한 뒷배경
+      const a = document.createElement('canvas'); a.width = Math.max(1, cv.width >> 2); a.height = Math.max(1, cv.height >> 2); a.getContext('2d').drawImage(cv, 0, 0, a.width, a.height);
+      const b2 = document.createElement('canvas'); b2.width = Math.max(1, a.width >> 2); b2.height = Math.max(1, a.height >> 2); b2.getContext('2d').drawImage(a, 0, 0, b2.width, b2.height); y.snap = b2;
+    }
+    ctx.save(); ctx.globalAlpha = t; ctx.imageSmoothingEnabled = true; ctx.drawImage(y.snap, 0, 0, G.L.W, G.L.H); ctx.restore();
+    ctx.fillStyle = `rgba(20,15,8,${.12 * t})`; ctx.fillRect(0, 0, G.L.W, G.L.H);
+    const h = G.L.H * (G.mode === 'pad' ? .58 : .36), breath = 1 + Math.sin(Date.now() / 700) * .012;   // 적당한 크기
+    sprite('yawn', G.L.W / 2, G.L.H * (G.mode === 'pad' ? .9 : .78) + (1 - t) * 80, h * breath, { alpha: t });
   }
 
   /* ---- 큰 상반신 달해: 설명이 필요할 때 게임 화면 맨 앞에서 말풍선과 함께 이야기함 (탭하면 다음 / 닫힘) ---- */
