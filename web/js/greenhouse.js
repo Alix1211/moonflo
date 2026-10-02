@@ -23,7 +23,7 @@
   let uid = 1;
   // 테스트용: 새로 생기는 칩 중 이 비율만큼 특수탄으로 나옴 (테스트 끝나면 0으로)
   const TEST_SP = 0, SPS = ['row', 'col', 'wideRow', 'wideCol', 'bomb'];
-  const rndSp = () => (TEST_SP && Math.random() < TEST_SP) || Math.random() < bonus('sp') * .06 ? SPS[Math.floor(Math.random() * SPS.length)] : null;   // 소품 능력: 특수칩이 가끔 그냥 나옴
+  const rndSp = () => (TEST_SP && Math.random() < TEST_SP) || Math.random() < .05 * (1 + bonus('sp')) ? SPS[Math.floor(Math.random() * SPS.length)] : null;   // 특수칩 기본 출현 5% (소품 능력만큼 더: 최대 6.5%)
   const tile = (t, sp = null) => ({ t, sp, id: uid++, dy: 0, ox: 0, oy: 0, sc: 1 });
 
   const board = () => G.L.gh.board;
