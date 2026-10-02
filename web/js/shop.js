@@ -128,6 +128,21 @@ function removeProp(id) {
     if (isOwned(it) || it.soon) return;
     if (it.req && !G.S.owned[it.req]) return;
     if (G.S.coins < it.cost) { say('돈이 조금 모자라요.', 3); toast('돈이 모자라요'); return; }
+    if (it.kind === 'prop' && !it._ok) {                                                // 능력이 이미 최대면 한 번 물어봄
+      const e = PROP_EFFECT[it.id];
+      if (e) { const cap = EFFECT_KIND[e[0]].cap, now = Math.round(bonus(e[0]) * 100);
+        if (now >= cap) {
+          openPopup({ title: '능력이 이미 최대예요', draw(r) {
+            this.btns = []; const [x, y, w] = r, pd = G.mode === 'pad', fs = pd ? 34 : 40, bh = pd ? 100 : 130;
+            wrap(`「${EFFECT_KIND[e[0]].label(cap)}」이(가) 이미 최대라서, ${it.name}을(를) 사도 능력은 더 오르지 않아요. ${PROP_PLAY[it.id] ? `「${PROP_PLAY[it.id]}」 놀이는 열려요. ` : ''}그래도 사실래요?`, x, y + 30, w, fs, '#6e4b28');
+            const r1 = [x, y + 30 + fs * 5, w * .48, bh], r2 = [x + w * .52, y + 30 + fs * 5, w * .48, bh];
+            button(r1, '그래도 살게요', { size: fs }); this.btns.push({ rect: r1, fn: () => { G.popup = null; shopBuy(Object.assign({}, it, { _ok: true })); } });
+            button(r2, '그만둘게요', { size: fs }); this.btns.push({ rect: r2, fn: () => { G.popup = null; G.dirty = true; } });
+          } });
+          return;
+        }
+      }
+    }
     if (it.kind === 'prop') {
       const cp = st.shop === 'seed' && Story.coupon() ? Math.round(it.cost * .9) : it.cost;   // 씨앗 가게 할인권 1회
       if (cp < it.cost) { Story.useCoupon(); toast(`할인권 사용 · ${it.cost - cp}골드 아꼈어요`); }
