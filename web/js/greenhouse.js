@@ -23,7 +23,7 @@
   let uid = 1;
   // 테스트용: 새로 생기는 칩 중 이 비율만큼 특수탄으로 나옴 (테스트 끝나면 0으로)
   const TEST_SP = 0, SPS = ['row', 'col', 'wideRow', 'wideCol', 'bomb'];
-  const rndSp = () => (TEST_SP && Math.random() < TEST_SP) || Math.random() < .03 + bonus('sp') * .1 ? SPS[Math.floor(Math.random() * SPS.length)] : null;   // 특수칩 기본 출현 3% + 소품 능력 1%당 0.1% (최대 6%)
+  const rndSp = () => { if ((TEST_SP && Math.random() < TEST_SP) || (st.spLeft > 0 && Math.random() < .03 + bonus('sp') * .1)) { if (st.spLeft > 0) st.spLeft--; return SPS[Math.floor(Math.random() * SPS.length)]; } return null; };   // 특수칩 기본 출현 3% + 소품 능력 1%당 0.1% (최대 6%)
   const tile = (t, sp = null) => ({ t, sp, id: uid++, dy: 0, ox: 0, oy: 0, sc: 1 });
 
   const board = () => G.L.gh.board;
@@ -159,6 +159,7 @@
 
   /* ---- 바꾸기 ---- */
   function trySwap(a, b) {
+    st.spLeft = 1;                                   // 한 번 움직일 때(연쇄 포함) 그냥 떨어지는 특수칩은 1개까지
     st.sel = null; st.hint = null; st.combo = 0; SFX.play('swap');
     const A = st.g[a[0]][a[1]], B = st.g[b[0]][b[1]];
     const dx = b[1] - a[1], dy = b[0] - a[0];
