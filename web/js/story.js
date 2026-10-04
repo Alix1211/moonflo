@@ -141,6 +141,94 @@ const SCENES = [
     ['k', 't', '처음 왔을 때가 엊그제 같은데… 이젠 {me} 씨 없는 마을은 상상이 안 돼요.'],
     ['k', 's', '내년에도 같이 준비해요. 그때는 저 불 꺼진 가게들에도 새 이웃이 올지 몰라요.']],
     reward: { gems: 1 } },
+
+  // ── 마을 일손 돕기 (덧붙인 부탁들): 끝내면 연구 힌트를 줌. req.beds = 밭이 이만큼 열린 뒤에 ──
+  // 윤하
+  { id: 'v_y1', shop: 'seed', req: { after: ['c1_seed'], visits: 2 }, lines: [
+    ['k', 'n', '{me} 씨, 이것 좀 봐 주실래요? 할머니 서랍에서 낡은 연구 수첩이 나왔어요.'],
+    ['k', 'n', '글씨가 번져서 잘 안 읽히는데… 꽃을 옆에 놓고 보면 신기하게 읽혀요. 꽃 향으로 잉크를 만드셨나 봐요.'],
+    ['k', 't', '튤립 넷, 데이지 둘만 가져다주실래요?']],
+    need: { tulip: 4, daisy: 2 },
+    done: [['k', 's', '와, 읽혀요! 여기… 어떤 꽃씨를 만들 때 쓰는 재료가 적혀 있어요.'], ['k', 's', '{me} 씨가 먼저 알아야 할 것 같아서 적어 드릴게요.']],
+    reward: { hint: 1, coins: 100 } },
+  { id: 'v_y2', shop: 'seed', req: { after: ['v_y1'], nextDay: 'v_y1', visits: 4 }, lines: [
+    ['k', 'n', '어제 읽은 수첩 뒤쪽에 또 있었어요. 비 오는 날 씨앗 말리는 법이랑… 이상한 메모요.'],
+    ['k', 't', '해바라기 셋이랑 라벤더 셋이 있으면 나머지 글씨도 읽을 수 있을 것 같아요.']],
+    need: { sunflower: 3, lavender: 3 },
+    done: [['k', 's', '…찾았어요! 이 메모는 꼭 {me} 씨한테 필요할 것 같아요.']],
+    reward: { hint: 1, coins: 150 } },
+  { id: 'v_y3', shop: 'seed', req: { after: ['v_y2'], nextDay: 'v_y2', visits: 6 }, lines: [
+    ['k', 'n', '수첩 마지막 장이에요. 여기부터는 할머니 글씨가 아닌 것 같아요. 누가 덧붙였나 봐요.'],
+    ['k', 'n', '장미 둘, 수국 둘로 이름표를 만들어 두면 순서대로 정리돼서 읽기 쉬울 것 같아요.']],
+    need: { rose: 2, hydrangea: 2 },
+    done: [['k', 's', '이름표를 달아 두니 한눈에 보여요! 이 줄은 {me} 씨 몫이에요.']],
+    reward: { hint: 2, coins: 200 } },
+  { id: 'v_y4', shop: 'seed', req: { after: ['v_y3'], nextDay: 'v_y3', beds: 5 }, lines: [
+    ['k', 's', '{me} 씨, 밭을 다 여셨다면서요? 소문이 벌써 났어요.'],
+    ['k', 'n', '수첩 표지 안쪽에 접힌 쪽지가 하나 더 있어요. 백합 둘이랑 동백 둘로 눌러 펴야 열려요. 할머니다운 방법이죠.']],
+    need: { lily: 2, camellia: 2 },
+    done: [['k', 's', '…열렸어요! 할머니, 끝까지 숙제를 남기셨네요.']],
+    reward: { hint: 2, gems: 1 } },
+  // 정숙 이모
+  { id: 'v_f1', shop: 'flower', req: { after: ['c1_flower'], visits: 2 }, lines: [
+    ['k', 't', '{me}야, 마침 잘 왔다! 읍내 아줌마가 꽃다발 주문을 넣었는데 손이 모자라네.'],
+    ['k', 'n', '데이지 넷, 해바라기 둘이면 돼. 해 줄 수 있지?']],
+    need: { daisy: 4, sunflower: 2 },
+    done: [['k', 's', '이야, 솜씨 좋네! 아줌마가 또 시키겠다.'], ['k', 't', '옛날에 이 마을에서 특별한 꽃씨를 만들던 할머니가 있었대. 그 얘기 한 조각 들려줄게.']],
+    reward: { hint: 1, coins: 100 } },
+  { id: 'v_f2', shop: 'flower', req: { after: ['v_f1'], nextDay: 'v_f1', visits: 4 }, lines: [
+    ['k', 't', '이번엔 혼례 꽃이다! 장미 셋, 라벤더 둘. 향 좋게 부탁한다.']],
+    need: { rose: 3, lavender: 2 },
+    done: [['k', 's', '신부가 울었대, 꽃이 너무 예뻐서! 다 네 덕분이야.']],
+    reward: { hint: 1, coins: 150 } },
+  { id: 'v_f3', shop: 'flower', req: { after: ['v_f2'], nextDay: 'v_f2', visits: 6, beds: 2 }, lines: [
+    ['k', 'n', '가을엔 새로 들어온 꽃도 팔아야지. 코스모스 셋, 프리지아 셋만 줘 봐.']],
+    need: { cosmos: 3, freesia: 3 },
+    done: [['k', 's', '색이 이렇게 섞이니 가게가 다 환하다!']],
+    reward: { hint: 2, coins: 250 } },
+  { id: 'v_f4', shop: 'flower', req: { after: ['v_f3'], nextDay: 'v_f3', beds: 5 }, lines: [
+    ['k', 't', '{me}야, 밭 다 열었다며? 이모는 다 안다!'],
+    ['k', 'n', '귀한 손님이 백합과 동백으로 큰 꽃바구니를 맞췄어. 백합 셋, 동백 셋만 가져와 줘.']],
+    need: { lily: 3, camellia: 3 },
+    done: [['k', 's', '이 바구니 하나로 가게 한 달은 먹고살겠다. 하하!']],
+    reward: { hint: 2, coins: 400 } },
+  // 만석 아저씨
+  { id: 'v_g1', shop: 'general', req: { after: ['c1_general'], visits: 2 }, lines: [
+    ['k', 't', '{me} 씨, 손 좀 빌려요. 포장 리본에 향을 입히려는데 라벤더랑 데이지가 필요해요.'],
+    ['k', 'n', '라벤더 둘, 데이지 둘이면 돼요. 이 향이 잘 팔린다는 소문이에요.']],
+    need: { lavender: 2, daisy: 2 },
+    done: [['k', 's', '허허, 향이 은은하니 좋네요! 그리고 이건 소문으로 들은 건데…']],
+    reward: { hint: 1, coins: 100 } },
+  { id: 'v_g2', shop: 'general', req: { after: ['v_g1'], nextDay: 'v_g1', visits: 4, beds: 2 }, lines: [
+    ['k', 's', '손님 중에 노래하듯 주문하는 분이 있어요. 프리지아 셋, 튤립 셋을 노래로 불러서 웃었지 뭐예요.']],
+    need: { freesia: 3, tulip: 3 },
+    done: [['k', 's', '허허, 그 손님 입이 귀에 걸렸어요!']],
+    reward: { hint: 1, coins: 150 } },
+  { id: 'v_g3', shop: 'general', req: { after: ['v_g2'], nextDay: 'v_g2', visits: 6, beds: 3 }, lines: [
+    ['k', 'n', '우리 아들이 방학이라 내려온대요! 방에 카네이션을 꽂아 주고 싶어서요. 카네이션 셋, 해바라기 둘만요.']],
+    need: { carnation: 3, sunflower: 2 },
+    done: [['k', 's', '아들 녀석 방이 환해졌어요. 고마워요, {me} 씨!']],
+    reward: { hint: 2, coins: 200 } },
+  // 도윤
+  { id: 'v_d1', shop: 'furniture', req: { after: ['c1_furn_b'], visits: 3 }, lines: [
+    ['k', 'n', '…'],
+    ['k', 'n', '…씨앗 상자 손잡이에 해바라기를 새기고 싶어요. 실물을 보고요.'],
+    ['k', 'n', '…두 송이만.']],
+    need: { sunflower: 2 },
+    done: [['k', 's', '…고마워요. (한참 꽃을 들여다보며 조각칼을 든다)'], ['k', 'n', '…새기다 나온 메모예요. 읽어 봐요.']],
+    reward: { hint: 1, coins: 100 } },
+  { id: 'v_d2', shop: 'furniture', req: { after: ['v_d1'], nextDay: 'v_d1', visits: 5 }, lines: [
+    ['k', 'n', '…나무 향이 너무 진해요. 라벤더가 있으면 가려질 것 같아서.'],
+    ['k', 'n', '…네 송이만.']],
+    need: { lavender: 4 },
+    done: [['k', 's', '…좋은 냄새. 이제 일이 잘돼요.']],
+    reward: { hint: 1, coins: 150 } },
+  { id: 'v_d3', shop: 'furniture', req: { after: ['v_d2'], nextDay: 'v_d2', visits: 7, beds: 4 }, lines: [
+    ['k', 'n', '…작약. 이 마을 사람들은 작약을 걸어 두면 일이 잘 풀린다고 믿어요.'],
+    ['k', 'n', '…두 송이만 부탁해요.']],
+    need: { peony: 2 },
+    done: [['k', 's', '…고마워요. 이건… 제 마음이에요.']],
+    reward: { hint: 2, coins: 250 } },
 ];
 
 const Story = (() => {
@@ -156,6 +244,7 @@ const Story = (() => {
     if (r.nextDay && s.doneDay[r.nextDay] === todayKey()) return false;
     if (r.visits && (s.v[sc.shop] || 0) < r.visits) return false;
     if (r.prog && s.prog < r.prog) return false;
+    if (r.beds && G.S.beds.length < r.beds) return false;
     if (r.any2 && r.any2.filter(id => s.done[id]).length < 2) return false;
     if (r.loanDue && !(s.loan && s.loan.days >= r.loanDue)) return false;
     if (sc.need && sc.need.mini && !G.S.owned.p_console) return false;   // 문플로: 게임기를 산 뒤에
@@ -190,7 +279,8 @@ const Story = (() => {
     if (r.prog) { s.prog += r.prog; got.push('박람회 준비 +1'); }
     if (r.coupon) { s.coupon = 1; got.push('씨앗 가게 할인권'); }
     if (r.flag) s.flags[r.flag] = 1;
-    if (got.length) toast(got.join(' · '), 3200);
+    let hm = ''; for (let i = 0; i < (r.hint || 0); i++) hm += giveHint();   // 연구 힌트 (알려 줄 게 없으면 빈 글)
+    if (got.length || hm) toast(got.join(' · ') + hm, hm ? 5200 : 3200);
   }
   // 가게에 들어올 때: 진행 중 의뢰 → 새 장면(하루 2번) → 일상 대사
   let cur = null;
