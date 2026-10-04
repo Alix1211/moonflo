@@ -329,6 +329,7 @@ const Story = (() => {
   function later() { cur.lines = [['k', 's', '천천히 해도 괜찮아요. 기다릴게요.']]; cur.i = 0; cur.phase = 'lines'; cur.then = 'idle'; }
   const line = () => cur && cur.lines[cur.i] ? cur.lines[cur.i] : null;
   return {
+    hasQuest: shop => { const s = S(); return SCENES.some(x => x.shop === shop && s.active[x.id]) || (s.cnt < 2 && SCENES.some(x => x.shop === shop && !s.done[x.id] && !s.active[x.id] && reqOk(x, s))); },   // 마을 지도 느낌표용: 받을 부탁이나 진행 중인 부탁이 있나
     enter, next, choose, deliver, later, fill, needText, canGive: () => cur && cur.sc && canGive(cur.sc.need, S()),
     get cur() { return cur; }, line, coupon: () => G.S.story && G.S.story.coupon, useCoupon: () => { if (G.S.story) G.S.story.coupon = 0; },
     prog: () => (G.S.story && G.S.story.flags && G.S.story.flags.fair) ? G.S.story.prog || 0 : -1,

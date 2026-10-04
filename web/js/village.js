@@ -37,6 +37,12 @@
       ctx.font = font(fs, 800); const tw = ctx.measureText(s.name).width + 36;
       rrect(cx - tw / 2, ty, tw, fs + 22, (fs + 22) / 2); ctx.fillStyle = 'rgba(255,248,232,.92)'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#9b7148'; ctx.stroke();
       text(s.name, cx, ty + (fs + 22) / 2 + 2, fs, '#6e4b28', 'center');
+      if (Story.hasQuest(s.id)) {                       // 부탁이 있으면 가게 위에 느낌표가 통통 튐
+        const R = pd() ? 34 : 44, by2 = y - R * .3 - 6 + Math.sin(Date.now() / 230) * 7;
+        ctx.beginPath(); ctx.arc(cx, by2, R, 0, 7); ctx.fillStyle = '#ffc928'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = '#fff8e8'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, by2, R + 3, 0, 7); ctx.lineWidth = 3; ctx.strokeStyle = '#c0522c'; ctx.stroke();
+        text('!', cx, by2 + 3, R * 1.5, '#c0522c', 'center');
+      }
     }
     const pg = Story.prog();
     if (pg >= 0) { const t = '박람회 준비  ' + '●'.repeat(Math.min(pg, 4)) + '○'.repeat(Math.max(0, 4 - pg)), f2 = pd() ? 34 : 42; ctx.font = font(f2, 800); const tw = ctx.measureText(t).width + 50;
@@ -80,6 +86,7 @@
   G.screens.village = {
     onEnter(prev) { if (prev && prev !== 'shop') { st.from = prev; st.shop = null; } },
     busy: () => !!st.shop && Date.now() < st.tw + 50,
+    slow: () => !st.shop && SHOPS.some(o => !o.lock && Story.hasQuest(o.id)),   // 느낌표가 튀는 동안만 부드럽게 다시 그림
     onButton() {},
     draw() { st.btns = []; if (st.shop) drawShop(); else drawMap(); },
     up(p, tap) {
