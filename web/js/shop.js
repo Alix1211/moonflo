@@ -50,7 +50,7 @@ function removeProp(id) {
   };
   const shopOf = id => Object.keys(PROP_SHOP).find(k => PROP_SHOP[k].includes(id)) || 'general';
   const SHOP_TABS = {
-    seed: ['도구·화단', '정원', '방', '온실'], flower: ['정원', '방', '온실'], furniture: ['정원', '방', '온실'], general: ['정원', '방', '온실', '꾸미기', '다이아'],
+    seed: ['도구·화단', '정원', '방', '온실', '씨앗 교환'], flower: ['정원', '방', '온실'], furniture: ['정원', '방', '온실'], general: ['정원', '방', '온실', '꾸미기', '다이아'],
   };
   const tabs = () => SHOP_TABS[st.shop] || SHOP_TABS.general;
   function items() {
@@ -58,6 +58,7 @@ function removeProp(id) {
     const prop = place => PROPS.filter(p => p.place === place && shopOf(p.id) === st.shop).map(p => ({ kind: 'prop', id: p.id, name: p.name, cost: p.cost, img: 'prop_' + p.id }));
     const mails = kinds => SHOP_MAILS.filter(m => kinds.includes(m.item.kind)).map(m => ({ kind: 'mail', id: m.id, name: m.item.name, cost: m.cost, req: m.requires, img: IMG[m.id], k: m.item.kind, v: m.item.v || 0 }));
     if (nm === '도구·화단') return mails(['bed', 'can', 'glove']);
+    if (nm === '씨앗 교환') return swapOpen().map(f => ({ kind: 'swap', id: f.id, name: f.name + ' 씨앗', img: `flower_${f.id}_seed`, sub: `가진 ${G.S.seeds[f.id] || 0}개` }));
     if (nm === '정원') return prop('garden');
     if (nm === '방') return prop('room');
     if (nm === '온실') return prop('gh');
@@ -106,6 +107,7 @@ function removeProp(id) {
     if (it.soon) { label = '준비 중'; dis = true; }
     else if (it.kind === 'prop' && own && PROP_SPECIAL[it.id]) { label = it.id === 'console' ? '방에 있어요' : '게시판에 있어요'; dis = true; }
     else if (it.kind === 'prop' && own) { const pl = isPlaced(it.id); label = pl ? '치우기' : '놓기'; fn = () => { if (pl) { removeProp(it.id); say('치웠어요.', 0); } else if (placeProp(it.id)) say('잘 어울려요.', 2); else say('자리가 다 찼어요. 놓인 것을 먼저 치워 주세요.', 3); }; }
+    else if (it.kind === 'swap') { label = '이걸로 바꾸기'; dis = !swapSources(it.id).length; fn = () => openSwap(it); }
     else if (it.kind === 'hg') { label = '구매'; dis = G.S.gems < it.cost; fn = () => buyHourglass(it); }
     else if (own) { label = '구매 완료'; dis = true; }
     else if (lock) { label = '잠겨 있어요'; dis = true; }
@@ -117,6 +119,39 @@ function removeProp(id) {
       lockIcon(x + w / 2, y + h * .2, Math.min(110, h * .28));
     }
   }
+
+  /* ---------- 씨앗 교환: 같은 씨앗 2개를 내면 다른 씨앗 1개 (열린 꽃의 일반 씨앗만) ---------- */
+  const swapOpen = () => FLOWERS.slice(0, openKinds());
+  const swapSources = target => swapOpen().filter(f => f.id !== target && (G.S.seeds[f.id] || 0) >= 2);
+  function openSwap(it) {
+    const target = it.id, name = FLOWER[target].name;
+    if (!swapSources(target).length) { say('바꿀 씨앗이 모자라요. 같은 씨앗 2개가 있어야 해요.', 3); toast('같은 씨앗 2개가 있어야 바꿀 수 있어요'); return; }
+    openPopup({ title: `${name} 씨앗으로 바꾸기`, sel: null, draw(r) {
+      this.btns = []; const [x, y, w, h] = r, pd = G.mode === 'pad', fs = pd ? 34 : 40, bh = pd ? 100 : 130, hh = pd ? 120 : 170;
+      const src = swapSources(target); if (this.sel && !src.some(f => f.id === this.sel)) this.sel = null;
+      wrap(`내 씨앗 2개를 내면 ${name} 씨앗 1개를 드려요. 낼 씨앗을 골라 주세요.`, x, y + 20, w, fs, '#6e4b28');
+      const gr = [x, y + hh, w, h - hh - bh - 24], cols = pd ? 3 : 2, gap = 20, ch = pd ? 170 : 200, cw = (w - gap * (cols - 1)) / cols, rows = Math.ceil(src.length / cols);
+      scrollBegin(this, gr, rows * (ch + gap) - gap);
+      src.forEach((f, i) => {
+        const rc = [x + (i % cols) * (cw + gap), gr[1] + Math.floor(i / cols) * (ch + gap), cw, ch], on = this.sel === f.id; card(rc, on);
+        imgFit(G.img[`flower_${f.id}_seed`], rc[0] + ch * .45, rc[1] + ch / 2, ch * .7);
+        text(`${f.name} 씨앗`, rc[0] + ch * .85, rc[1] + ch * .38, pd ? 30 : 32, '#6e4b28', 'left');
+        text(`가진 ${G.S.seeds[f.id]}개`, rc[0] + ch * .85, rc[1] + ch * .68, pd ? 28 : 30, on ? '#c0522c' : '#8a6a44', 'left');
+        const hit = scrollHit(this, gr, rc); if (hit) this.btns.push({ rect: hit, fn: () => { this.sel = f.id; } });
+      });
+      scrollEnd(this, gr);
+      const rb = [x + w * .2, y + h - bh, w * .6, bh], ok = !!this.sel;
+      button(rb, ok ? `${FLOWER[this.sel].name} 2개 → ${name} 1개` : '낼 씨앗을 골라 주세요', { size: pd ? 34 : 36, disabled: !ok });
+      this.btns.push({ rect: rb, fn: () => doSwap(this.sel, target) });
+    } });
+  }
+  function doSwap(give, target) {
+    const S = G.S; if (!give || give === target || (S.seeds[give] || 0) < 2) return;
+    S.seeds[give] -= 2; S.seeds[target] = (S.seeds[target] || 0) + 1; save();
+    G.popup = null; G.dirty = true;
+    say('바꿔 드렸어요.', 2); toast(`${FLOWER[give].name} 씨앗 2개 → ${FLOWER[target].name} 씨앗 1개`);
+  }
+  G.shopSwap = id => openSwap({ id });
 
   function buyHourglass(it) {
     if (G.S.gems < it.cost) { say('다이아가 조금 모자라요.', 3); toast('다이아가 모자라요'); return; }
@@ -192,7 +227,7 @@ function removeProp(id) {
     draw() {
       const g = geo(), S = G.S;
       const maxScroll = Math.max(0, st.contentH - g.list[3]); st.scroll = Math.min(Math.max(st.scroll, 0), maxScroll);
-      const key = [st.shop, st.tab, Math.round(st.scroll), S.coins, S.gems, Object.keys(S.owned).length, S.beds.length, S.can, S.glove, decorKey(), S.mails.filter(m => !m.read).length].join('|');
+      const key = [st.shop, st.tab, Math.round(st.scroll), S.coins, S.gems, Object.keys(S.owned).length, S.beds.length, S.can, S.glove, decorKey(), Object.values(S.seeds).join(','), S.mails.filter(m => !m.read).length].join('|');
       cachedLayer('shop', key, () => {
         st.btns = []; st.list = g.list;
         ctx.fillStyle = '#e7cfa3'; ctx.fillRect(0, 0, G.L.W, G.L.H);
