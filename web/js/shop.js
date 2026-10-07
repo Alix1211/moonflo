@@ -130,7 +130,7 @@ function removeProp(id) {
       this.btns = []; const [x, y, w, h] = r, pd = G.mode === 'pad', fs = pd ? 34 : 40, bh = pd ? 100 : 130, hh = pd ? 120 : 170;
       const src = swapSources(target); if (this.sel && !src.some(f => f.id === this.sel)) this.sel = null;
       wrap(`내 씨앗 2개를 내면 ${name} 씨앗 1개를 드려요. 낼 씨앗을 골라 주세요.`, x, y + 20, w, fs, '#6e4b28');
-      const gr = [x, y + hh, w, h - hh - bh - 24], cols = pd ? 3 : 2, gap = 20, ch = pd ? 170 : 200, cw = (w - gap * (cols - 1)) / cols, rows = Math.ceil(src.length / cols);
+      const gr = [x, y + hh, w, h - hh - bh - 70], cols = pd ? 3 : 2, gap = 20, ch = pd ? 170 : 200, cw = (w - gap * (cols - 1)) / cols, rows = Math.ceil(src.length / cols);
       scrollBegin(this, gr, rows * (ch + gap) - gap);
       src.forEach((f, i) => {
         const rc = [x + (i % cols) * (cw + gap), gr[1] + Math.floor(i / cols) * (ch + gap), cw, ch], on = this.sel === f.id; card(rc, on);
@@ -140,16 +140,22 @@ function removeProp(id) {
         const hit = scrollHit(this, gr, rc); if (hit) this.btns.push({ rect: hit, fn: () => { this.sel = f.id; } });
       });
       scrollEnd(this, gr);
-      const rb = [x + w * .2, y + h - bh, w * .6, bh], ok = !!this.sel;
-      button(rb, ok ? `${FLOWER[this.sel].name} 2개 → ${name} 1개` : '낼 씨앗을 골라 주세요', { size: pd ? 34 : 36, disabled: !ok });
-      this.btns.push({ rect: rb, fn: () => doSwap(this.sel, target) });
+      const have = this.sel ? G.S.seeds[this.sel] || 0 : 0, mx = Math.floor(have / 2), by = y + h - bh;            // 한 번에 여러 번 바꾸기: 1번·5번·10번·모두
+      const bw = (w - 20 * 3) / 4;
+      if (this.sel) text(`${FLOWER[this.sel].name} 씨앗 ${have}개 → 최대 ${mx}번 바꿀 수 있어요`, x + w / 2, by - 30, pd ? 30 : 32, '#c0522c', 'center');
+      else text('위에서 낼 씨앗을 골라 주세요', x + w / 2, by - 30, pd ? 30 : 32, '#8a6a44', 'center');
+      [1, 5, 10, 0].forEach((n, i) => {
+        const cnt = n || mx, ok = !!this.sel && cnt >= 1 && (n === 0 || n <= mx), rb = [x + i * (bw + 20), by, bw, bh];
+        button(rb, n ? `${n}번` : `모두 (${mx}번)`, { size: pd ? 34 : 34, disabled: !ok });
+        this.btns.push({ rect: rb, fn: () => ok && doSwap(this.sel, target, cnt) });
+      });
     } });
   }
-  function doSwap(give, target) {
-    const S = G.S; if (!give || give === target || (S.seeds[give] || 0) < 2) return;
-    S.seeds[give] -= 2; S.seeds[target] = (S.seeds[target] || 0) + 1; save();
+  function doSwap(give, target, n) {
+    const S = G.S; n = Math.min(n | 0, Math.floor((S.seeds[give] || 0) / 2)); if (!give || give === target || n < 1) return;
+    S.seeds[give] -= 2 * n; S.seeds[target] = (S.seeds[target] || 0) + n; save();
     G.popup = null; G.dirty = true;
-    say('바꿔 드렸어요.', 2); toast(`${FLOWER[give].name} 씨앗 2개 → ${FLOWER[target].name} 씨앗 1개`);
+    say('바꿔 드렸어요.', 2); toast(`${FLOWER[give].name} 씨앗 ${2 * n}개 → ${FLOWER[target].name} 씨앗 ${n}개`);
   }
   G.shopSwap = id => openSwap({ id });
 
