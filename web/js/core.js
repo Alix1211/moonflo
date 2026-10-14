@@ -340,7 +340,7 @@ function gridRects(r, cols, rows, gap = 24) {
 }
 // 팝업 안 스크롤: begin/end 사이에 그리면 손가락으로 위아래로 밀 수 있음
 function scrollBegin(p, r, contentH) {
-  p.contentH = contentH; const max = Math.max(0, contentH - r[3]);
+  p.contentH = contentH; p._viewH = r[3]; const max = Math.max(0, contentH - r[3]);   // _viewH: 실제로 보이는 높이 (끌어서 내릴 때 끝까지 가게)
   p.scroll = Math.min(Math.max(p.scroll || 0, 0), max);
   ctx.save(); ctx.beginPath(); ctx.rect(r[0] - 12, r[1], r[2] + 24, r[3]); ctx.clip(); ctx.translate(0, -p.scroll);
 }
@@ -392,8 +392,9 @@ function pointermove0(e) {
   if (Math.hypot(p.x - ptr.sx, p.y - ptr.sy) > 12 / G.scale) ptr.moved = true;
   if (ptr.target === 'popup') {
     const pp = G.popup;
-    if (pp && ptr.moved && pp._inner && pp.contentH > pp._inner[3]) {
-      pp.scroll = Math.min(Math.max((pp.scroll || 0) - (p.y - ptr.ly), 0), pp.contentH - pp._inner[3]); G.dirty = true;
+    const vh = pp && pp._inner ? (pp._viewH || pp._inner[3]) : 0;
+    if (pp && ptr.moved && pp._inner && pp.contentH > vh) {
+      pp.scroll = Math.min(Math.max((pp.scroll || 0) - (p.y - ptr.ly), 0), pp.contentH - vh); G.dirty = true;
     }
     ptr.ly = p.y;
   }
