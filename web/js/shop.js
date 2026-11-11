@@ -55,7 +55,7 @@ function removeProp(id) {
   const tabs = () => SHOP_TABS[st.shop] || SHOP_TABS.general;
   function items() {
     const nm = tabs()[st.tab], out = [];
-    const prop = place => PROPS.filter(p => p.place === place && shopOf(p.id) === st.shop).map(p => ({ kind: 'prop', id: p.id, name: p.name, cost: p.cost, img: 'prop_' + p.id }));
+    const prop = place => PROPS.filter(p => !p.gem && p.place === place && shopOf(p.id) === st.shop).map(p => ({ kind: 'prop', id: p.id, name: p.name, cost: p.cost, img: 'prop_' + p.id }));
     const mails = kinds => SHOP_MAILS.filter(m => kinds.includes(m.item.kind)).map(m => ({ kind: 'mail', id: m.id, name: m.item.name, cost: m.cost, req: m.requires, img: IMG[m.id], k: m.item.kind, v: m.item.v || 0 }));
     if (nm === '도구·화단') return mails(['bed', 'can', 'glove']);
     if (nm === '씨앗 교환') return swapOpen().map(f => ({ kind: 'swap', id: f.id, name: f.name + ' 씨앗', img: `flower_${f.id}_seed`, sub: `가진 ${G.S.seeds[f.id] || 0}개` }));
@@ -63,7 +63,9 @@ function removeProp(id) {
     if (nm === '방') return prop('room');
     if (nm === '온실') return prop('gh');
     if (nm === '꾸미기') return mails(['outfit']).map(i => Object.assign(i, { tag: '옷' })).concat([{ kind: 'soon', id: 'deco_soon', name: '시계 틀 · 게시판 · 우체통', soon: true, tag: '곧 들어와요' }]);
-    return HG.map(h => ({ kind: 'hg', id: h.id, name: h.name, cost: h.cost, gem: true, img: 'hg_' + h.min }));
+    return HG.map(h => ({ kind: 'hg', id: h.id, name: h.name, cost: h.cost, gem: true, img: 'hg_' + h.min }))
+      .concat([{ kind: 'refresh', id: 'refresh', name: '의뢰 새로고침', cost: 3, gem: true, tag: '새 의뢰' }])
+      .concat(PROPS.filter(p => p.gem).map(p => ({ kind: 'prop', id: p.id, name: p.name, cost: p.cost, gem: true, img: 'prop_' + p.id })));
   }
 
   function geo() {
@@ -109,6 +111,8 @@ function removeProp(id) {
     else if (it.kind === 'prop' && own) { const pl = isPlaced(it.id); label = pl ? '치우기' : '놓기'; fn = () => { if (pl) { removeProp(it.id); say('치웠어요.', 0); } else if (placeProp(it.id)) say('잘 어울려요.', 2); else say('자리가 다 찼어요. 놓인 것을 먼저 치워 주세요.', 3); }; }
     else if (it.kind === 'swap') { label = '이걸로 바꾸기'; dis = !swapSources(it.id).length; fn = () => openSwap(it); }
     else if (it.kind === 'hg') { label = '구매'; dis = G.S.gems < it.cost; fn = () => buyHourglass(it); }
+    else if (it.kind === 'refresh') { label = '새로고침'; dis = G.S.gems < it.cost; fn = () => buyRefresh(it); }
+    else if (it.kind === 'prop' && it.gem) { label = '구매'; dis = G.S.gems < it.cost; fn = () => buyGemProp(it); }
     else if (own) { label = '구매 완료'; dis = true; }
     else if (lock) { label = '잠겨 있어요'; dis = true; }
     else { label = '구매'; dis = G.S.coins < it.cost; fn = () => shopBuy(it); }
@@ -163,6 +167,22 @@ function removeProp(id) {
     if (G.S.gems < it.cost) { say('다이아가 조금 모자라요.', 3); toast('다이아가 모자라요'); return; }
     G.S.gems -= it.cost; addItem(it.id, 1); save(); G.dirty = true;
     say('고맙습니다.', 1); toast(`${it.name}을(를) 가방에 넣었어요 (${itemCount(it.id)}개)`);
+  }
+
+  function buyGemProp(it) {
+    if (isOwned(it)) return;
+    if (G.S.gems < it.cost) { say('다이아가 조금 모자라요.', 3); toast('다이아가 모자라요'); return; }
+    G.S.gems -= it.cost; G.S.owned['p_' + it.id] = true;
+    const ok = placeProp(it.id), hm = giveHint(); save(); G.dirty = true;
+    say('특별한 걸 고르셨네요.', 2); toast(`${it.name} 구매 완료!${ok ? '' : ' (자리가 없어 보관해 둬요)'}${hm}`, hm ? 4200 : 2200);
+  }
+  function buyRefresh(it) {                                                    // 지금 납품할 수 없는 의뢰만 새 의뢰로 바꿈 (납품할 수 있는 것·오늘 받은 건수는 그대로)
+    const S = G.S;
+    if (S.gems < it.cost) { say('다이아가 조금 모자라요.', 3); toast('다이아가 모자라요'); return; }
+    const keep = S.orders.filter(canDeliver).length;
+    if (keep >= S.orders.length) { say('바꿀 의뢰가 없어요. 납품할 수 있는 것뿐이에요.', 3); toast('바꿀 의뢰가 없어요'); return; }
+    S.gems -= it.cost; S.orders = S.orders.map(o => canDeliver(o) ? o : makeOrder()); save(); G.dirty = true;
+    say('새 의뢰로 바꿔 두었어요.', 2); toast(`의뢰 ${S.orders.length - keep}건을 새로 바꿨어요`);
   }
 
   function shopBuy(it) {

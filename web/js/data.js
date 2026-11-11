@@ -164,6 +164,10 @@ const PROPS = [
   { id: 'n21', place: 'room', name: '홍차 세트', cost: 940 }, { id: 'n22', place: 'gh', name: '화분 더미', cost: 380 },
   { id: 'n23', place: 'room', name: '라벤더 다발', cost: 340 }, { id: 'n24', place: 'gh', name: '나비 석상', cost: 2200 },
   { id: 'console', place: 'room', name: '게임기', cost: 800 },   // 문플로: 사면 방 바닥에 게임기가 생김 → 꽃밭 서바이벌
+  // 다이아로만 사는 특별 소품 (gem: true → 다이아 가격, 잡화점 「다이아」 탭)
+  { id: 'd1', place: 'garden', name: '별빛 수정 탑', cost: 80, gem: true }, { id: 'd2', place: 'garden', name: '보름달 꽃문', cost: 100, gem: true },
+  { id: 'd3', place: 'room', name: '초승달 소파', cost: 120, gem: true }, { id: 'd4', place: 'room', name: '별 모빌', cost: 60, gem: true, wall: true },
+  { id: 'd5', place: 'gh', name: '수정 꽃병', cost: 70, gem: true }, { id: 'd6', place: 'gh', name: '반딧불 유리등', cost: 70, gem: true },
 ];
 // 소품 능력: 사서 가지고 있으면 적용(놓지 않아도 됨). 같은 종류는 합쳐지고 위에 한도가 있음
 const EFFECT_KIND = {
