@@ -50,7 +50,7 @@ function removeProp(id) {
   };
   const shopOf = id => Object.keys(PROP_SHOP).find(k => PROP_SHOP[k].includes(id)) || 'general';
   const SHOP_TABS = {
-    seed: ['도구·화단', '정원', '방', '온실', '씨앗 교환'], flower: ['정원', '방', '온실'], furniture: ['정원', '방', '온실'], general: ['정원', '방', '온실', '꾸미기', '다이아'],
+    seed: ['도구·화단', '정원', '방', '온실', '씨앗 교환'], flower: ['정원', '방', '온실'], furniture: ['정원', '방', '온실'], general: ['정원', '방', '온실', '꾸미기', '다이아'], magic: ['마법 소재'],
   };
   const tabs = () => SHOP_TABS[st.shop] || SHOP_TABS.general;
   function items() {
@@ -59,6 +59,7 @@ function removeProp(id) {
     const mails = kinds => SHOP_MAILS.filter(m => kinds.includes(m.item.kind)).map(m => ({ kind: 'mail', id: m.id, name: m.item.name, cost: m.cost, req: m.requires, img: IMG[m.id], k: m.item.kind, v: m.item.v || 0 }));
     if (nm === '도구·화단') return mails(['bed', 'can', 'glove']);
     if (nm === '씨앗 교환') return swapOpen().map(f => ({ kind: 'swap', id: f.id, name: f.name + ' 씨앗', img: `flower_${f.id}_seed`, sub: `가진 ${G.S.seeds[f.id] || 0}개` }));
+    if (nm === '마법 소재') return MATS.map(m => ({ kind: 'mat', id: m.id, name: m.name, cost: MAT_PRICE[m.id], img: 'mat_' + m.id }));
     if (nm === '정원') return prop('garden');
     if (nm === '방') return prop('room');
     if (nm === '온실') return prop('gh');
@@ -111,6 +112,7 @@ function removeProp(id) {
     else if (it.kind === 'prop' && own) { const pl = isPlaced(it.id); label = pl ? '치우기' : '놓기'; fn = () => { if (pl) { removeProp(it.id); say('치웠어요.', 0); } else if (placeProp(it.id)) say('잘 어울려요.', 2); else say('자리가 다 찼어요. 놓인 것을 먼저 치워 주세요.', 3); }; }
     else if (it.kind === 'swap') { label = '이걸로 바꾸기'; dis = !swapSources(it.id).length; fn = () => openSwap(it); }
     else if (it.kind === 'hg') { label = '구매'; dis = G.S.gems < it.cost; fn = () => buyHourglass(it); }
+    else if (it.kind === 'mat') { const left = matLeft(it.id); label = left > 0 ? `구매 (오늘 ${left}번)` : '오늘은 다 샀어요'; dis = left <= 0 || G.S.coins < it.cost; fn = () => buyMat(it); }
     else if (it.kind === 'refresh') { label = '새로고침'; dis = G.S.gems < it.cost; fn = () => buyRefresh(it); }
     else if (it.kind === 'prop' && it.gem) { label = '구매'; dis = G.S.gems < it.cost; fn = () => buyGemProp(it); }
     else if (own) { label = '구매 완료'; dis = true; }
@@ -169,6 +171,16 @@ function removeProp(id) {
     say('고맙습니다.', 1); toast(`${it.name}을(를) 가방에 넣었어요 (${itemCount(it.id)}개)`);
   }
 
+  const MAT_PRICE = { moondust: 400, dew: 400, starfrag: 600, wing: 800 }, MAT_DAY = 3;      // 소재는 하루 세 번까지만 살 수 있음
+  const matLeft = id => { const b = G.S.matBuy; return MAT_DAY - (b && b.day === todayKey() ? b.n[id] || 0 : 0); };
+  function buyMat(it) {
+    const S = G.S; if (matLeft(it.id) <= 0) { say('오늘은 이만큼만 드릴게요. 내일 또 오세요.', 3); toast('오늘은 다 샀어요'); return; }
+    if (S.coins < it.cost) { say('돈이 조금 모자라요.', 3); toast('돈이 모자라요'); return; }
+    const t = giveMat(it.id, 1); if (!t) { say('아직 팔 수 없는 소재예요.', 3); return; }
+    if (!S.matBuy || S.matBuy.day !== todayKey()) S.matBuy = { day: todayKey(), n: {} };
+    S.coins -= it.cost; S.matBuy.n[it.id] = (S.matBuy.n[it.id] || 0) + 1; save(); G.dirty = true;
+    say('고맙습니다.', 1); toast(`${it.name} 구매 완료!`);
+  }
   function buyGemProp(it) {
     if (isOwned(it)) return;
     if (G.S.gems < it.cost) { say('다이아가 조금 모자라요.', 3); toast('다이아가 모자라요'); return; }
@@ -253,7 +265,7 @@ function removeProp(id) {
     draw() {
       const g = geo(), S = G.S;
       const maxScroll = Math.max(0, st.contentH - g.list[3]); st.scroll = Math.min(Math.max(st.scroll, 0), maxScroll);
-      const key = [st.shop, st.tab, Math.round(st.scroll), S.coins, S.gems, Object.keys(S.owned).length, S.beds.length, S.can, S.glove, decorKey(), Object.values(S.seeds).join(','), S.mails.filter(m => !m.read).length].join('|');
+      const key = [st.shop, st.tab, Math.round(st.scroll), S.coins, S.gems, Object.keys(S.owned).length, S.beds.length, S.can, S.glove, decorKey(), Object.values(S.seeds).join(','), Object.values(S.mats || {}).join(','), (S.matBuy && S.matBuy.day === todayKey() ? Object.values(S.matBuy.n).join(',') : ''), S.mails.filter(m => !m.read).length].join('|');
       cachedLayer('shop', key, () => {
         st.btns = []; st.list = g.list;
         ctx.fillStyle = '#e7cfa3'; ctx.fillRect(0, 0, G.L.W, G.L.H);

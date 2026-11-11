@@ -340,7 +340,8 @@
       for (const bed of G.S.beds) for (const c of bed) if (c.wet && c.until) { c.until -= RULES.fairySkipMin * MIN; n++; }
       floatText('반짝!', f.x, f.y - 40, '#fff6b0');
       const gem = Math.random() < RULES.fairyGemChance; if (gem) G.S.gems++;
-      toast((n ? `시간의 요정이 ${RULES.fairySkipMin}분을 당겨 줬어요` : '시간의 요정이 인사하고 갔어요') + (gem ? ' 다이아 +1' : ''));
+      const mm = Math.random() < .2 ? giveMat(null, 1) : '';
+      toast((n ? `시간의 요정이 ${RULES.fairySkipMin}분을 당겨 줬어요` : '시간의 요정이 인사하고 갔어요') + (gem ? ' 다이아 +1' : '') + mm);
       save(); tick(); G.dirty = true;
     },
     down(p) {

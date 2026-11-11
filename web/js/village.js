@@ -8,10 +8,11 @@
     { id: 'general',   name: '잡화점',    pad: [.58, .28, .71, .52], phone: [.04, .25, .37, .39] },
     { id: 'furniture', name: '가구공방',  pad: [.77, .24, .96, .52], phone: [.61, .23, .96, .39] },
     { id: 'lock1', lock: true, pad: [.24, .05, .36, .25], phone: [.065, .10, .37, .22] },
-    { id: 'lock2', lock: true, pad: [.44, .05, .57, .25], phone: [.39, .04, .65, .15] },
+    { id: 'magic', name: '마법 재료상', lockIf: () => !Object.keys(G.S.found || {}).length, pad: [.44, .05, .57, .25], phone: [.39, .04, .65, .15] },
     { id: 'lock3', lock: true, pad: [.65, .05, .78, .25], phone: [.65, .10, .94, .22] },
   ];
-  const SIDE = { seed: .72, flower: .72, general: .72, furniture: .26 };   // 가게 안 사장님 가로 위치
+  const SIDE = { seed: .72, flower: .72, general: .72, furniture: .26, magic: .72 };   // 가게 안 사장님 가로 위치
+  const isLock = s => s.lock || (s.lockIf && s.lockIf());                              // 잠긴 가게(특수꽃을 발견하면 마법 재료상이 열림)
   const st = { from: 'garden', shop: null, line: '', face: 'n', btns: [], tw: 0 };
   const rectOf = s => { const r = s[G.mode]; return [r[0] * G.L.W, r[1] * G.L.H, (r[2] - r[0]) * G.L.W, (r[3] - r[1]) * G.L.H]; };
   function cover(im) {
@@ -25,15 +26,16 @@
     button(r, label, { size: pd() ? 36 : 44 }); st.btns.push({ rect: r, fn });
   }
   function enterShop(s) {
-    if (s.lock) { toast('아직 불이 꺼져 있어요. 언젠가 문을 열 거예요.'); return; }
+    if (isLock(s)) { toast('아직 불이 꺼져 있어요. 언젠가 문을 열 거예요.'); return; }
     st.shop = s; Story.enter(s.id); st.tw = Date.now() + 1200; G.dirty = true;
   }
   function drawMap() {
     cover(G.img[pd() ? 'vil_map_pad' : 'vil_map_phone']);
     const fs = pd() ? 34 : 44;
     for (const s of SHOPS) {
-      if (s.lock) continue;
+      if (isLock(s)) continue;
       const [x, y, w, h] = rectOf(s), cx = x + w / 2, ty = y + h + (pd() ? 6 : 10);
+      if (s.lockIf) { const gl = ctx.createRadialGradient(cx, y + h * .55, 4, cx, y + h * .55, Math.max(w, h) * .6); gl.addColorStop(0, 'rgba(255,225,140,.55)'); gl.addColorStop(1, 'rgba(255,225,140,0)'); ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = gl; ctx.fillRect(x - w * .3, y - h * .3, w * 1.6, h * 1.6); ctx.restore(); }   // 문을 연 가게는 불이 켜짐
       ctx.font = font(fs, 800); const tw = ctx.measureText(s.name).width + 36;
       rrect(cx - tw / 2, ty, tw, fs + 22, (fs + 22) / 2); ctx.fillStyle = 'rgba(255,248,232,.92)'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#9b7148'; ctx.stroke();
       text(s.name, cx, ty + (fs + 22) / 2 + 2, fs, '#6e4b28', 'center');
@@ -86,7 +88,7 @@
   G.screens.village = {
     onEnter(prev) { if (prev && prev !== 'shop') { st.from = prev; st.shop = null; } },
     busy: () => !!st.shop && Date.now() < st.tw + 50,
-    slow: () => !st.shop && SHOPS.some(o => !o.lock && Story.hasQuest(o.id)),   // 느낌표가 튀는 동안만 부드럽게 다시 그림
+    slow: () => !st.shop && SHOPS.some(o => !isLock(o) && Story.hasQuest(o.id)),   // 느낌표가 튀는 동안만 부드럽게 다시 그림
     onButton() {},
     draw() { st.btns = []; if (st.shop) drawShop(); else drawMap(); },
     up(p, tap) {

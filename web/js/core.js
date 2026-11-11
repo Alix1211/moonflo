@@ -43,10 +43,11 @@ function imageList() {
     ...['fairy','fairy2','hourglass','hourglass2','teapot','can','can2','glove','glove2'].map(n => ['it_' + n, `img/item/it_${n}.png`]),
     ...['basket','harvest','hoe','sleep','wheel','med','bp','toilet'].map(n => ['po_' + n, `img/char/po_${n}.png`]),
     ['vil_map_pad', 'img/village/map_pad.jpg'], ['vil_map_phone', 'img/village/map_phone.jpg'],
-    ...['seed','flower','general','furniture'].flatMap(k => [['vil_st_' + k, `img/village/st_${k}.jpg`], ...['n','t','s'].map(f => [`vil_kp_${k}_${f}`, `img/village/kp_${k}_${f}.webp`])]),
+    ...['seed','flower','general','furniture','magic'].flatMap(k => [['vil_st_' + k, `img/village/st_${k}.jpg`], ...['n','t','s'].map(f => [`vil_kp_${k}_${f}`, `img/village/kp_${k}_${f}.webp`])]),
     ['bg_shop', 'img/bg_shop.jpg'], ['bg_lab_pad', 'img/bg_lab_pad.jpg'], ['bg_lab_phone', 'img/bg_lab_phone.jpg'],
     ...['slot','slot_on','btn','btn_b','back','pot0','pot1','pot2','bub0','bub1','bub2','spk0','spk1','spk2','dh0','dh1','dh2'].map(n => ['lab_' + n, `img/lab/${n}.webp`]),
     ...PROPS.map(p => ['prop_' + p.id, `img/prop/${p.id}.png`]),
+    ...MATS.map(m => ['mat_' + m.id, `img/mat/${m.id}.png`]),
     ...[0, 1, 2, 3].flatMap(r => [0, 1, 2].map(c => [`sk_${r}${c}`, `img/shop/sk_${r}${c}.png`])),
     ['bg_garden_pad_dusk', 'img/bg_garden_pad_dusk.jpg'], ['bg_garden_pad_night', 'img/bg_garden_pad_night.jpg'], ['bg_garden_phone_dusk', 'img/bg_garden_phone_dusk.jpg'], ['bg_garden_phone_night', 'img/bg_garden_phone_night.jpg'],
     ['bg_gh_pad_dusk', 'img/bg_gh_pad_dusk.jpg'], ['bg_gh_pad_night', 'img/bg_gh_pad_night.jpg'],
@@ -69,7 +70,7 @@ function loadOne([n, src], onDone) {
     const im = new Image();
     im.onload = () => { G.img[n] = im; onDone && onDone(); G.dirty = true; res(); };
     im.onerror = () => { console.warn('그림 없음', src); onDone && onDone(); res(); };
-    im.src = /^img\/(char|item|prop|shop|icon)\/|^img\/bed_base\.png$/.test(src) ? src.replace(/\.png$/, '.webp') : src;   // 큰 그림은 용량이 작은 webp로
+    im.src = /^img\/(char|item|prop|shop|icon|mat)\/|^img\/bed_base\.png$/.test(src) ? src.replace(/\.png$/, '.webp') : src;   // 큰 그림은 용량이 작은 webp로
   });
 }
 function loadImages(onProgress) {

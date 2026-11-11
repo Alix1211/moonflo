@@ -65,7 +65,7 @@ function refreshOrders() {
   while (S.orders.length < RULES.orderSlots && S.doneToday + S.orders.length < ordersMax() && now >= t) { S.orders.push(makeOrder()); t += orderGapMin() * MIN; add = true; }
   if (add || !S.nextOrderAt) S.nextOrderAt = t;
   if (add) { save(); G.dirty = true; }
-  refreshSpecial(); maybeHintMail();
+  refreshSpecial(); refreshMagic(); maybeHintMail();
 }
 function canDeliver(o) { for (const id in o.need) if ((G.S.flowers[id] || 0) < o.need[id]) return false; return true; }
 function deliver(o) {
@@ -76,7 +76,8 @@ function deliver(o) {
   const mis = (G.S.mission = G.S.mission && G.S.mission.day === G.S.day ? G.S.mission : { day: G.S.day, done: false });
   if (!mis.done && G.S.doneToday >= RULES.missionOrders) { mis.done = true; G.S.gems += RULES.missionGems; setTimeout(() => toast(`오늘의 미션 완료! 다이아 +${RULES.missionGems}`, 3000), 2400); }
   G.S.orders = G.S.orders.filter(x => x !== o);
-  refreshOrders(); save(); toast(`납품 완료! 돈 +${o.coins}`);
+  const mm = Math.random() < .12 ? giveMat(null, 1) : '';
+  refreshOrders(); save(); toast(`납품 완료! 돈 +${o.coins}${mm}`);
   if (typeof buddyReact === 'function') buddyReact('꽃 배달 다녀왔어요!', 'po_basket'); else if (typeof buddyCheer === 'function') buddyCheer();
 }
 function openOrders() {
@@ -189,9 +190,9 @@ function openMail() {
         }
         const so = open.sorder;
         if (so) {
-          const sp = SPECIAL[so.sp], done = !!so.done, have = (G.S.sflowers && G.S.sflowers[so.sp]) || 0, ok = !done && have >= 1, cy = r[1] + r[3] - 215;
+          const sp = SPECIAL[so.sp], done = !!so.done, have = ((so.mg ? G.S.mflowers : G.S.sflowers) || {})[so.sp] || 0, ok = !done && have >= 1, cy = r[1] + r[3] - 215;
           drawHalo(x + 90, cy, 100, sp.hue); imgFit(G.img[`flower_${baseId(sp.id)}_bloom`], x + 90, cy, 120);
-          text(`「${sp.name}」 ${Math.min(have, 1)}/1`, x + 210, cy - 34, 40, ok ? '#4f7d2c' : '#6e4b28');
+          text(`「${so.mg ? '마법의 ' : ''}${sp.name}」 ${Math.min(have, 1)}/1`, x + 210, cy - 34, so.mg ? 34 : 40, ok ? '#4f7d2c' : '#6e4b28');
           drawCoin(x + 226, cy + 34, 22); text(`+${so.coins}`, x + 262, cy + 36, 40, '#b07a12');
           if (so.gems) { drawGem(x + 420, cy + 34, 22); text(`+${so.gems}`, x + 456, cy + 36, 40, '#2a8aa8'); }
           const br = [r[0] + r[2] - 330, r[1] + r[3] - 290, 330, 170];
@@ -293,6 +294,7 @@ function refreshSpecial() {
   const S = G.S, d = todayKey(), now = Date.now();
   // 안 열린 꽃이 재료인 예전 특수 의뢰는 정리 (이미 그 꽃씨·꽃을 갖고 있거나 발견한 것이면 그대로 둠)
   S.sseeds = S.sseeds || {}; S.sflowers = S.sflowers || {}; S.found = S.found || {};
+  S.mats = S.mats || {}; S.mflowers = S.mflowers || {}; S.mfound = S.mfound || {}; S.mhints = S.mhints || {};
   const before = S.mails.length;
   S.mails = S.mails.filter(m => !m.sorder || m.sorder.done || !SPECIAL[m.sorder.sp] || spOpen(SPECIAL[m.sorder.sp]) || S.found[m.sorder.sp] || (S.sseeds[m.sorder.sp] || 0) > 0 || (S.sflowers[m.sorder.sp] || 0) > 0);
   if (S.mails.length !== before) { save(); G.dirty = true; }
@@ -308,9 +310,32 @@ function refreshSpecial() {
 }
 function deliverSpecial(mail) {
   const so = mail.sorder, S = G.S; if (!so || so.done) return;
-  S.sflowers = S.sflowers || {}; if ((S.sflowers[so.sp] || 0) < 1) return;
-  S.sflowers[so.sp]--; so.done = true; S.coins += so.coins; S.gems += so.gems || 0;
-  const hm = giveHint(); save(); G.dirty = true; toast(`납품 완료! 돈 +${so.coins}${so.gems ? ' · 다이아 +' + so.gems : ''}${hm}`, 4200);
+  S.sflowers = S.sflowers || {}; S.mflowers = S.mflowers || {}; const box = so.mg ? S.mflowers : S.sflowers; if ((box[so.sp] || 0) < 1) return;
+  box[so.sp]--; so.done = true; S.coins += so.coins; S.gems += so.gems || 0;
+  const hm = so.mg ? '' : giveHint(), mm = giveMat(null, 1); save(); G.dirty = true; toast(`납품 완료! 돈 +${so.coins}${so.gems ? ' · 다이아 +' + so.gems : ''}${hm}${mm}`, 4200);
+}
+
+/* ---------- 마법 소재·마법 의뢰 ---------- */
+// 소재를 1개 이상 줌 (id 없으면 무작위). 아직 특수꽃을 하나도 못 찾았으면 주지 않음. 처음 받을 때 안내 편지가 옴. 화면에 붙일 글을 돌려줌
+function giveMat(id, n = 1) {
+  const S = G.S; S.found = S.found || {}; if (!Object.keys(S.found).length) return '';
+  S.mats = S.mats || {}; const m = id ? MAT[id] : MATS[Math.floor(Math.random() * MATS.length)]; if (!m) return '';
+  S.mats[m.id] = (S.mats[m.id] || 0) + n;
+  if (!S.matTut) { S.matTut = 1; S.mails.push({ id: 'mt_tut', from: '마법 재료 안내', read: false, body: '마법 소재가 생겼어요.\n온실의 「씨앗 만들기」에서 「마법」 칸을 열어 보세요.\n발견한 특수꽃 한 송이와 마법 소재 두 개를 섞으면 「마법의 꽃」이 될지도 몰라요.\n꽃마다 맞는 소재가 달라요. 틀려도 재료는 그대로이니 마음껏 해 보세요.' }); }
+  return ` · ${m.name} +${n}`;
+}
+function giveMagicHint() {                                  // 아직 못 만든 마법 꽃 하나의 소재를 하나씩 알려 줌
+  const S = G.S; S.mhints = S.mhints || {}; S.mfound = S.mfound || {}; S.found = S.found || {};
+  const pool = SPECIALS.filter(s => S.found[s.id] && !S.mfound[s.id] && (S.mhints[s.id] || 0) < 2); if (!pool.length) return '';
+  const sp = pool[Math.floor(Math.random() * pool.length)], k = S.mhints[sp.id] || 0; S.mhints[sp.id] = k + 1;
+  return ` · 마법 힌트: 「${sp.name}」에는 ${MATS[magicRecipe(sp.id)[k]].name}`;
+}
+function refreshMagic() {                                   // 마법의 꽃을 만든 적이 있으면 하루 한 번까지 마법 의뢰 편지가 옴
+  const S = G.S, d = todayKey(); S.mfound = S.mfound || {}; const ids = Object.keys(S.mfound).filter(id => SPECIAL[id]);
+  if (!ids.length || S.mgDay === d || S.mails.some(x => x.sorder && x.sorder.mg && !x.sorder.done)) return;
+  S.mgDay = d; const sp = SPECIAL[ids[Math.floor(Math.random() * ids.length)]], who = (SPECIAL_STORY[sp.id] || ['단골 손님'])[0], rw = spReward(sp);
+  S.mails.push({ id: 'mg_' + Date.now(), from: who, body: `안녕하세요, ${who}입니다.\n지난번 그 꽃이 정말 좋았어요. 이번에는 마법이 깃든 꽃으로 부탁드려도 될까요?\n「마법의 ${sp.name}」 한 송이를 부탁드립니다.`, read: false, sorder: { sp: sp.id, mg: 1, coins: rw.coins * 3, gems: (rw.gems || 0) + 2 } });
+  save(); G.dirty = true; toast('마법 의뢰 편지가 왔어요');
 }
 
 /* ---------- 특수꽃을 일반 꽃처럼 다루는 도우미 ---------- */

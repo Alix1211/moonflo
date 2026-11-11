@@ -499,14 +499,15 @@ function openCraft() {
     title: '씨앗 만들기', big: 'laugh',
     draw(full) {
       this.btns = [];
-      const padT = G.mode === 'pad', tw = padT ? 260 : 210, th = 80;
-      ['씨앗 만들기', '씨앗 연구', '도감'].forEach((nm, i) => {
+      const padT = G.mode === 'pad', tw = padT ? 260 : 200, th = 80;
+      ['씨앗 만들기', '씨앗 연구', '도감', '마법'].forEach((nm, i) => {
         const rt = [full[0] + i * (tw + 14), full[1], tw, th];
-        button(rt, nm, { active: tab === i, size: 38 }); this.btns.push({ rect: rt, fn: () => { if (i === 1) { G.popup = null; go('lab'); return; } tab = i; this.scroll = 0; } });
+        button(rt, nm, { active: tab === i, size: padT ? 38 : 32 }); this.btns.push({ rect: rt, fn: () => { if (i === 1) { G.popup = null; go('lab'); return; } tab = i; MG.sel = null; MG.msg = ''; this.scroll = 0; } });
       });
       const r = [full[0], full[1] + th + 20, full[2], full[3] - th - 20];
       if (tab === 1) return researchTab(this, r);
       if (tab === 2) return dexTab(this, r);
+      if (tab === 3) return magicTab(this, r);
       const pad = G.mode === 'pad';
       const all = [r[0] + r[2] / 2 - 200, r[1] + r[3] - 110, 400, 110];
       const area = [r[0], r[1], r[2], r[3] - 140];
@@ -617,6 +618,69 @@ function pickTab(p, r) {
   }
   scrollEnd(p, r2);
 }
+/* ---------- 마법의 꽃: 특수꽃 1송이 + 마법 소재 2개 ---------- */
+const MG = { sel: null, a: -1, b: -1, msg: '' };
+function castMagic() {
+  const S = G.S, id = MG.sel, sp = SPECIAL[id], need = {}; for (const k of [MG.a, MG.b]) need[k] = (need[k] || 0) + 1;
+  if ((S.sflowers[id] || 0) < 1) { MG.msg = '이 특수꽃이 모자라요.'; return; }
+  for (const k in need) if ((S.mats[MATS[k].id] || 0) < need[k]) { MG.msg = `${MATS[k].name}이(가) 모자라요.`; return; }
+  const rec = magicRecipe(id), pair = [MG.a, MG.b].sort();
+  if (pair[0] === rec[0] && pair[1] === rec[1]) {
+    S.sflowers[id]--; for (const k in need) S.mats[MATS[k].id] -= need[k];
+    const first = !S.mfound[id]; S.mfound[id] = 1; S.mflowers[id] = (S.mflowers[id] || 0) + 1;
+    MG.msg = first ? '새로운 마법의 꽃을 발견했어요!' : `마법의 ${sp.name} +1`; toast(`마법의 ${sp.name}${first ? ' 발견!' : ' +1'}`, 3000);
+    SFX.both('mixOk');
+    save();
+  } else {
+    const left = rec.slice(); let hit = 0; for (const v of pair) { const i = left.indexOf(v); if (i >= 0) { left.splice(i, 1); hit++; } }
+    MG.msg = hit ? '반짝! 한 가지는 맞는 것 같아요.' : '아무 일도 일어나지 않았어요. 재료는 그대로예요.';
+  }
+  G.dirty = true;
+}
+function magicTab(p, r) {
+  ensureSpecial(); const S = G.S; S.mats = S.mats || {}; S.mflowers = S.mflowers || {}; S.mfound = S.mfound || {}; S.mhints = S.mhints || {}; S.sflowers = S.sflowers || {};
+  const [x, y, w, h] = r, pad = G.mode === 'pad', gap = 12, mw = (w - gap * 3) / 4, mh = pad ? 150 : 140;
+  MATS.forEach((m, i) => {
+    const rc = [x + i * (mw + gap), y, mw, mh], n = S.mats[m.id] || 0; card(rc, n > 0);
+    imgFit(G.img['mat_' + m.id], rc[0] + mw / 2, rc[1] + mh * .4, Math.min(mw, mh) * .56);
+    text(`${m.name} ${n}`, rc[0] + mw / 2, rc[1] + mh * .86, pad ? 26 : 21, '#6e4b28', 'center');
+  });
+  const y2 = y + mh + 20, r2 = [x, y2, w, h - mh - 20];
+  if (MG.sel) return magicCast(p, r2);
+  const found = SPECIALS.filter(s => S.found[s.id]), n = SPECIALS.filter(s => S.mfound[s.id]).length;
+  text(`마법의 꽃 ★ ${n} / ${SPECIALS.length}`, x, y2 + 24, 34, '#6e4b28');
+  if (!found.length) { text('특수꽃을 발견하면 여기서 마법을 걸 수 있어요.', x + w / 2, y2 + 140, 30, '#8a6a44', 'center'); return; }
+  const r3 = [x, y2 + 60, w, r2[3] - 60], cols = pad ? 3 : 2, cg = 14, ch = 150, cw = (w - cg * (cols - 1)) / cols;
+  scrollBegin(p, r3, Math.ceil(found.length / cols) * (ch + cg));
+  found.forEach((s, i) => {
+    const rc = [x + (i % cols) * (cw + cg), r3[1] + Math.floor(i / cols) * (ch + cg), cw, ch], have = S.sflowers[s.id] || 0, mf = S.mfound[s.id], k = S.mhints[s.id] || 0, rec = magicRecipe(s.id);
+    card(rc, have > 0 || !!mf);
+    drawHalo(rc[0] + 60, rc[1] + ch / 2, 54, s.hue); imgFit(G.img[`flower_${baseId(s.id)}_seed`], rc[0] + 60, rc[1] + ch / 2, 62);
+    text(s.name, rc[0] + 124, rc[1] + ch * .24, pad ? 26 : 22, '#6e4b28', 'left');
+    text(`꽃 ${have} · 마법 ${S.mflowers[s.id] || 0}`, rc[0] + 124, rc[1] + ch * .5, 22, '#8a6a44', 'left', false, 500);
+    const rt = mf ? `${MATS[rec[0]].name} + ${MATS[rec[1]].name}` : (k ? `${MATS[rec[0]].name} + ${k > 1 ? MATS[rec[1]].name : '?'}` : '');
+    if (rt) text(rt, rc[0] + 124, rc[1] + ch * .76, 20, '#6e4b28', 'left', false, 500);
+    if (mf) text('★', rc[0] + cw - 30, rc[1] + 30, 34, '#e0a800', 'center');
+    const hit = scrollHit(p, r3, rc); if (hit) p.btns.push({ rect: hit, fn: () => { if (have < 1) { toast('이 특수꽃이 한 송이 필요해요'); return; } MG.sel = s.id; MG.a = MG.b = -1; MG.msg = ''; p.scroll = 0; G.dirty = true; } });
+  });
+  scrollEnd(p, r3);
+}
+function magicCast(p, r) {
+  const [x, y, w, h] = r, S = G.S, sp = SPECIAL[MG.sel], pad = G.mode === 'pad';
+  const back = [x + w - 260, y, 260, 76]; button(back, '돌아가기', { size: 36 }); p.btns.push({ rect: back, fn: () => { MG.sel = null; MG.msg = ''; p.scroll = 0; G.dirty = true; } });
+  drawHalo(x + 50, y + 38, 50, sp.hue); imgFit(G.img[`flower_${baseId(sp.id)}_bloom`], x + 50, y + 38, 62);
+  text(sp.name, x + 120, y + 24, pad ? 32 : 28, '#6e4b28', 'left'); text(`가진 꽃 ${S.sflowers[sp.id] || 0}송이`, x + 120, y + 58, 22, '#8a6a44', 'left', false, 500);
+  const g3 = 20, cw3 = (w - g3 * 2) / 3, sh = pad ? 150 : 230, sy = y + (pad ? 96 : 120);
+  ['a', 'b'].forEach((k, i) => {
+    const v = MG[k], rc = [x + i * (cw3 + g3), sy, cw3, sh]; card(rc, v >= 0);
+    if (v >= 0) { imgFit(G.img['mat_' + MATS[v].id], rc[0] + cw3 / 2, sy + sh * .42, Math.min(cw3 * .6, sh * .62)); text(`${MATS[v].name} (${S.mats[MATS[v].id] || 0})`, rc[0] + cw3 / 2, sy + sh * .87, pad ? 22 : 26, '#6e4b28', 'center'); }
+    else text('눌러서 소재 고르기', rc[0] + cw3 / 2, sy + sh / 2, pad ? 22 : 26, '#b89a70', 'center');
+    p.btns.push({ rect: rc, fn: () => { MG[k] = v >= 3 ? -1 : v + 1; MG.msg = ''; G.dirty = true; } });
+  });
+  const ok = MG.a >= 0 && MG.b >= 0 && (S.sflowers[sp.id] || 0) >= 1, br = [x + 2 * (cw3 + g3), sy + sh * .12, cw3, sh * .76];
+  button(br, '마법 걸기', { disabled: !ok, size: pad ? 38 : 44 }); p.btns.push({ rect: br, disabled: !ok, fn: castMagic });
+  text(MG.msg || '칸을 누를 때마다 소재가 바뀌어요. 맞는 두 가지를 찾아 보세요.', x + w / 2, sy + sh + (pad ? 34 : 60), pad ? 26 : 30, '#8a6a44', 'center');
+}
 function dexTab(p, r) {
   ensureSpecial(); const [x, y, w] = r, pad = G.mode === 'pad', cols = pad ? 4 : 2, gap = 16, ch = 150;
   const cw = (w - gap * (cols - 1)) / cols, rows = Math.ceil(SPECIALS.length / cols);
@@ -633,6 +697,7 @@ function dexTab(p, r) {
     text(got ? s.name : '???', rc[0] + 150, rc[1] + ch * (hn ? .2 : .4), pad ? 30 : 28, '#6e4b28', 'left');
     if (hn) for (let k = 0; k < 3; k++) text(k < hn ? tokName(s.ing[k]) : '?', rc[0] + 150, rc[1] + ch * (.42 + k * .21), 20, k < hn ? '#6e4b28' : '#b89a70', 'left', false, 500);
     if (got) text(`꽃씨 ${G.S.sseeds[s.id] || 0}`, rc[0] + 150, rc[1] + ch * .72, 22, '#8a6a44', 'left', false, 500);
+    if ((G.S.mfound || {})[s.id]) text('★', rc[0] + cw - 34, rc[1] + 34, 38, '#e0a800', 'center');
   });
   scrollEnd(p, r2);
 }

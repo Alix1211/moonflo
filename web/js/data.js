@@ -261,6 +261,11 @@ const SPECIALS = [
 ];
 const SPECIAL = Object.fromEntries(SPECIALS.map(s => [s.id, s]));
 
+// 마법의 꽃: 특수꽃 1송이 + 마법 소재 2개 → 「마법의 ○○」 (특수꽃마다 소재 조합이 정해져 있음, 소재는 서로 같아도 됨)
+const MATS = [{ id: 'moondust', name: '달가루' }, { id: 'dew', name: '이슬방울' }, { id: 'starfrag', name: '별조각' }, { id: 'wing', name: '요정 날개가루' }];
+const MAT = Object.fromEntries(MATS.map(m => [m.id, m]));
+function magicRecipe(spId) { const i = Math.max(0, SPECIALS.findIndex(s => s.id === spId)); return [i % 4, (i * 3 + (i >> 2) + 1) % 4].sort(); }   // 소재 번호 두 개(작은 것부터)
+
 // 특수 의뢰 사연 (의뢰인, 본문) — 메일로 옴
 const SPECIAL_STORY = {
   sp01: ['동네 카페 사장', '손님들이 자꾸 그냥 지나가요. 입구에 두면 발이 저절로 멈추는 튤립이 있을까요?'],

@@ -2,10 +2,11 @@
 // 대사: [누가('k'=사장님, 'me'=주인공), 표정('n' 보통 · 's' 웃음), 글]. {me}=주인공 이름, {call}=부르는 말
 'use strict';
 const STORY_HERO = { me: '달해', call: '아가씨' };
-const KEEPER = { seed: '윤하', flower: '정숙 이모', general: '만석 아저씨', furniture: '도윤' };
+const KEEPER = { seed: '윤하', flower: '정숙 이모', general: '만석 아저씨', furniture: '도윤', magic: '소하' };
 const FNAME = { tulip: '튤립', daisy: '데이지', sunflower: '해바라기', lavender: '라벤더', rose: '장미', hydrangea: '수국' };
 
 const CHAT = {
+  magic: ['어서 오세요. 오늘은 별이 잘 보이는 날이에요.', '달가루는 비 온 다음 날 더 반짝여요.', '소재는 조급해하지 않는 사람에게 더 잘 모여요.', '마법의 꽃은 마음 편히 시도해 보세요. 틀려도 꽃은 안 다쳐요.'],
   seed: ['오늘 들어온 씨앗이에요. 냄새부터 다르죠?', "꽃말 하나 알려 드릴까요? 데이지는 '희망'이래요.", '할머니는 씨앗을 손바닥에 올려 보고 좋은 걸 고르셨대요. 저는 아직 멀었어요.', '비 오는 날엔 가게가 조용해서 좋아요.', '{me} 씨 밭은 요즘 어때요?'],
   flower: ['아이고, 우리 {me} 왔네! 밥은 먹고 다니지?', '꽃은 아침에 따야 제일 싱싱해. 이건 비밀이다?', '박람회 때 되면 이 동네 꽃이 다 수도로 올라가.', '요즘 젊은 사람들은 손이 야무져서 좋아.', '꽃값이 좀 올랐어. 팔 거 있으면 가져와.'],
   general: ['어서 와요! 오늘 들어온 물건이… 아, 어제 거랑 같구나. 허허.', '이 주전자 말이에요, 50년 된 거예요. 아마도요.', '소식 하나 들었어요? …아, 아직 아무도 말 안 해 줬구나.', '우리 아들 녀석이 공부를 꽤 해요. 누구 닮았는지 몰라.', '물건 구경은 공짜예요. 마음껏 봐요.'],
@@ -229,6 +230,98 @@ const SCENES = [
     need: { peony: 2 },
     done: [['k', 's', '…고마워요. 이건… 제 마음이에요.']],
     reward: { hint: 2, coins: 250 } },
+  // 마법 소재 이야기 (마법의 꽃 — 소재를 하나씩 모아 줌)
+  { id: 'm_y1', shop: 'seed', req: { after: ['v_y4'], nextDay: 'v_y4', sp: 1 }, lines: [
+    ['k', 'n', '{me} 씨, 수첩에서 새 글씨가 보였어요. 「달이 뜬 밤에 모은 가루는 꽃에 마법을 건다」래요.'],
+    ['k', 't', '달가루가 뭔지는 저도 몰라요. 데이지 셋이랑 라벤더 둘로 책갈피를 만들면 더 읽을 수 있을 것 같아요.']],
+    need: { daisy: 3, lavender: 2 },
+    done: [['k', 's', '책갈피 사이에 작은 병이 끼어 있었어요! 달가루래요. {me} 씨가 쓰세요.']],
+    reward: { mats: { moondust: 2 }, mhint: 1, coins: 150 } },
+  { id: 'm_y2', shop: 'seed', req: { after: ['m_y1'], nextDay: 'm_y1' }, lines: [
+    ['k', 'n', '이슬방울은 아침 일찍 장미 잎에 맺힌 걸 모으는 거래요. 수첩 구석에 그림도 있어요.'],
+    ['k', 't', '장미 둘이랑 수국 둘만 있으면 그림 속 병을 따라 만들어 볼게요.']],
+    need: { rose: 2, hydrangea: 2 },
+    done: [['k', 's', '됐어요! 병 안에 이슬이 찰랑거려요. 한번 받아 주세요.']],
+    reward: { mats: { dew: 2 }, mhint: 1, coins: 200 } },
+  { id: 'm_y3', shop: 'seed', req: { after: ['m_y2'], nextDay: 'm_y2' }, lines: [
+    ['k', 'n', '수첩 마지막 줄이에요. 「맞는 짝을 찾아야 마법의 꽃이 핀다. 틀려도 꽃은 다치지 않는다」'],
+    ['k', 't', '다행이죠? 해바라기 셋, 튤립 셋으로 마음 편히 해 보시라고 작은 상자를 꾸며 드릴게요.']],
+    need: { sunflower: 3, tulip: 3 },
+    done: [['k', 's', '상자 바닥에 별조각이 붙어 있었어요. 할머니의 선물인가 봐요.']],
+    reward: { mats: { starfrag: 2 }, mhint: 2, coins: 250 } },
+  { id: 'm_f1', shop: 'flower', req: { after: ['v_f4'], nextDay: 'v_f4', sp: 1 }, lines: [
+    ['k', 'n', '{me}, 별조각이라는 걸 아니? 밤에 꽃밭에 떨어진 별 부스러기래. 우리 할머니 때 얘기지.'],
+    ['k', 't', '시장에서 얻어 둔 게 있는데, 장미 셋이랑 바꿔 줄게.']],
+    need: { rose: 3 },
+    done: [['k', 's', '옜다, 반짝이는 거. 예쁘게 써 주렴.']],
+    reward: { mats: { starfrag: 2 }, mhint: 1, coins: 200 } },
+  { id: 'm_f2', shop: 'flower', req: { after: ['m_f1'], nextDay: 'm_f1' }, lines: [
+    ['k', 'n', '요정 날개가루는 시간의 요정이 가끔 흘리고 가는 거란다.'],
+    ['k', 't', '하늘에 요정이 보이면 꼭 눌러 줘. 튤립 넷, 데이지 셋이면 내가 모아 둔 걸 나눠 줄게.']],
+    need: { tulip: 4, daisy: 3 },
+    done: [['k', 's', '자, 날개가루. 요정이 심술부리지 않게 잘 부탁한다.']],
+    reward: { mats: { wing: 2 }, mhint: 1, coins: 250 } },
+  { id: 'm_f3', shop: 'flower', req: { after: ['m_f2'], nextDay: 'm_f2' }, lines: [
+    ['k', 'n', '마법의 꽃을 만들면 단골들이 금방 알아본단다. 그런 꽃만 찾는 손님도 생겨.'],
+    ['k', 't', '라벤더 셋, 해바라기 둘이면 첫 선물로 소재를 골고루 챙겨 줄게.']],
+    need: { lavender: 3, sunflower: 2 },
+    done: [['k', 's', '네 가지 다 넣었어. 짝은 직접 맞춰 봐.']],
+    reward: { mats: { moondust: 1, dew: 1, starfrag: 1, wing: 1 }, mhint: 2, coins: 300 } },
+  { id: 'm_g1', shop: 'general', req: { after: ['v_g3'], nextDay: 'v_g3', sp: 1 }, lines: [
+    ['k', 'n', '재고를 정리하다가 낡은 소재 상자를 찾았다오. 열쇠가 없는데 꽃향기를 맡으면 열린다는 말이 있소.'],
+    ['k', 't', '데이지 넷만 상자 옆에 놓아 보시겠소?']],
+    need: { daisy: 4 },
+    done: [['k', 's', '허허, 정말 열렸소! 이슬방울이 들어 있었소. 가져가시오.']],
+    reward: { mats: { dew: 2 }, mhint: 1, coins: 200 } },
+  { id: 'm_g2', shop: 'general', req: { after: ['m_g1'], nextDay: 'm_g1' }, lines: [
+    ['k', 'n', '상자 바닥에 이중 바닥이 있었소. 수국과 장미를 올려 두면 열릴 것 같소.']],
+    need: { hydrangea: 2, rose: 2 },
+    done: [['k', 's', '달가루가 숨어 있었구려. 이제 정말 다 비었소.']],
+    reward: { mats: { moondust: 2 }, mhint: 1, coins: 250 } },
+  { id: 'm_g3', shop: 'general', req: { after: ['m_g2'], nextDay: 'm_g2' }, lines: [
+    ['k', 'n', '손주가 놀러 왔다가 상자에서 반짝이는 걸 또 찾았소.'],
+    ['k', 't', '튤립 다섯 송이로 손주에게 꽃다발을 만들어 주면 그걸 나눠 주겠다고 하오.']],
+    need: { tulip: 5 },
+    done: [['k', 's', '손주가 아주 좋아했소. 이건 {me} 씨 몫이오.']],
+    reward: { mats: { wing: 2, starfrag: 1 }, mhint: 2, coins: 300 } },
+  { id: 'm_d1', shop: 'furniture', req: { after: ['v_d3'], nextDay: 'v_d3', sp: 1 }, lines: [
+    ['k', 'n', '…나무토막을 깎다 보니 안에 반짝이는 게 박혀 있었어요. …별조각 같아요.'],
+    ['k', 'n', '…라벤더 둘만 주세요.']],
+    need: { lavender: 2 },
+    done: [['k', 's', '…고마워요. 이건 가져가세요.']],
+    reward: { mats: { starfrag: 2 }, mhint: 1, coins: 200 } },
+  { id: 'm_d2', shop: 'furniture', req: { after: ['m_d1'], nextDay: 'm_d1' }, lines: [
+    ['k', 'n', '…이슬 맺힌 판자를 받았어요. 아침마다 물방울이 맺혀요.'],
+    ['k', 'n', '…해바라기 셋이면 그 물방울을 병에 담아 드릴게요.']],
+    need: { sunflower: 3 },
+    done: [['k', 's', '…조금밖에 못 담았어요. …그래도 맑아요.']],
+    reward: { mats: { dew: 2 }, mhint: 1, coins: 250 } },
+  { id: 'm_d3', shop: 'furniture', req: { after: ['m_d2'], nextDay: 'm_d2' }, lines: [
+    ['k', 'n', '…마법의 꽃, 만드셨어요? …장미는 마법이 잘 걸린다고 들었어요.'],
+    ['k', 'n', '…장미 셋이면 마지막 소재를 드릴게요.']],
+    need: { rose: 3 },
+    done: [['k', 's', '…달가루랑 날개가루예요. …잘 쓰세요.']],
+    reward: { mats: { moondust: 1, wing: 1 }, mhint: 2, coins: 300 } },
+  { id: 'm_s1', shop: 'magic', req: { sp: 1 }, lines: [
+    ['k', 'n', '어서 오세요. 저는 소하예요. 마법 재료를 모아서 꽃에게 건네는 일을 해요.'],
+    ['k', 'n', '발견한 특수꽃이 있으면 온실의 「씨앗 만들기」에서 「마법」 칸을 열어 보세요. 특수꽃 한 송이와 소재 두 개를 섞는 거예요.'],
+    ['k', 't', '꽃마다 맞는 짝이 달라요. 틀려도 꽃은 다치지 않으니까 마음껏 해 보세요. 한 가지만 맞으면 반짝! 하고 알려 드릴게요.'],
+    ['k', 'n', '시작 기념으로 튤립 둘만 가져다주시겠어요?']],
+    need: { tulip: 2 },
+    done: [['k', 's', '고마워요. 첫 선물이에요. 소재를 조금 드릴게요.']],
+    reward: { mats: { moondust: 1, dew: 1, starfrag: 1, wing: 1 }, mhint: 1, coins: 100 } },
+  { id: 'm_s2', shop: 'magic', req: { after: ['m_s1'], nextDay: 'm_s1' }, lines: [
+    ['k', 'n', '마법의 꽃을 만들어 두면 단골 손님들이 알아보고 마법 의뢰를 보내 와요. 보상도 넉넉해요.'],
+    ['k', 't', '데이지 셋으로 가게 창가를 꾸미고 싶은데, 도와주시겠어요?']],
+    need: { daisy: 3 },
+    done: [['k', 's', '창가가 환해졌어요. 이건 감사의 마음이에요.']],
+    reward: { mats: { dew: 2, wing: 1 }, mhint: 1, coins: 150 } },
+  { id: 'm_s3', shop: 'magic', req: { after: ['m_s2'], nextDay: 'm_s2' }, lines: [
+    ['k', 'n', '소재는 이 가게에서도 팔아요. 하루에 세 개씩만요. 욕심내면 마법이 시무룩해져요.'],
+    ['k', 't', '해바라기 셋이면 오늘 저녁 차에 곁들일 꽃병을 만들 수 있어요.']],
+    need: { sunflower: 3 },
+    done: [['k', 's', '고마워요. 앞으로도 잘 부탁드려요, {me} 씨.']],
+    reward: { mats: { moondust: 2, starfrag: 1 }, mhint: 2, coins: 200 } },
 ];
 
 const Story = (() => {
@@ -245,6 +338,7 @@ const Story = (() => {
     if (r.visits && (s.v[sc.shop] || 0) < r.visits) return false;
     if (r.prog && s.prog < r.prog) return false;
     if (r.beds && G.S.beds.length < r.beds) return false;
+    if (r.sp && Object.keys(G.S.found || {}).length < r.sp) return false;      // 특수꽃을 이만큼 발견해야 열림
     if (r.any2 && r.any2.filter(id => s.done[id]).length < 2) return false;
     if (r.loanDue && !(s.loan && s.loan.days >= r.loanDue)) return false;
     if (sc.need && sc.need.mini && !G.S.owned.p_console) return false;   // 문플로: 게임기를 산 뒤에
@@ -279,7 +373,9 @@ const Story = (() => {
     if (r.prog) { s.prog += r.prog; got.push('박람회 준비 +1'); }
     if (r.coupon) { s.coupon = 1; got.push('씨앗 가게 할인권'); }
     if (r.flag) s.flags[r.flag] = 1;
-    let hm = ''; for (let i = 0; i < (r.hint || 0); i++) hm += giveHint();   // 연구 힌트 (알려 줄 게 없으면 빈 글)
+    if (r.mats) for (const id in r.mats) { const t = giveMat(id, r.mats[id]); if (t) got.push(t.replace(/^ · /, '')); }
+    let hm = ''; for (let i = 0; i < (r.mhint || 0); i++) hm += giveMagicHint();
+    for (let i = 0; i < (r.hint || 0); i++) hm += giveHint();   // 연구 힌트 (알려 줄 게 없으면 빈 글)
     if (got.length || hm) toast(got.join(' · ') + hm, hm ? 5200 : 3200);
   }
   // 가게에 들어올 때: 진행 중 의뢰 → 새 장면(하루 2번) → 일상 대사
@@ -289,7 +385,7 @@ const Story = (() => {
     if (now - (s.vt[shop] || 0) > 10 * 60000) { s.v[shop] = (s.v[shop] || 0) + 1; s.vt[shop] = now; }
     if (shop === 'general' && s.loan && s.loan.last !== todayKey()) { s.loan.last = todayKey(); s.loan.days++; }
     const act = SCENES.find(sc => sc.shop === shop && s.active[sc.id]);
-    const ASK = { seed: '부탁드린 건 어떻게 됐어요?', flower: '부탁한 건 어떻게 됐어?', general: '부탁한 거, 어떻게 돼 가요?', furniture: '…부탁한 거요.' };
+    const ASK = { seed: '부탁드린 건 어떻게 됐어요?', flower: '부탁한 건 어떻게 됐어?', general: '부탁한 거, 어떻게 돼 가요?', furniture: '…부탁한 거요.', magic: '부탁드린 건 어떻게 됐나요?' };
     if (act) cur = { sc: act, lines: [['k', 'n', ASK[shop]]], i: 0, phase: 'lines', then: 'need' };
     else {
       const sc = s.cnt < 2 && SCENES.find(x => x.shop === shop && !s.done[x.id] && !s.active[x.id] && reqOk(x, s));
