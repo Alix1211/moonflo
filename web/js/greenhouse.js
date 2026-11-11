@@ -279,6 +279,12 @@
     const c = document.createElement('canvas'); c.width = G.L.W; c.height = G.L.H; const x = c.getContext('2d');
     const sfx = s => G.img[`bg_gh_${G.mode}${s ? '_' + s : ''}`], stg = bgStage(), A = sfx(stg.a), B = sfx(stg.b);
     if (A) {
+      if (G.mode === 'pad') {                       // 새 그림은 꽃이 많아 정신없어서: 살짝 흐리게 + 옅은 막으로 눌러 줌(낮·밤 모두)
+        const night = stg.a === 'night', m = 40;
+        x.save(); x.filter = 'blur(5px) saturate(.8)'; x.drawImage(A, -m, -m, G.L.W + m * 2, G.L.H + m * 2); x.restore();
+        x.fillStyle = night ? 'rgba(14,12,44,.40)' : 'rgba(255,248,252,.40)'; x.fillRect(0, 0, G.L.W, G.L.H);
+        st.bg = c; st.bgMode = G.mode; st.bgKey = JSON.stringify(stg); return;
+      }
       x.drawImage(A, 0, 0, G.L.W, G.L.H);
       if (B && stg.w > 0 && B !== A) { x.globalAlpha = stg.w; x.drawImage(B, 0, 0, G.L.W, G.L.H); x.globalAlpha = 1; }
       st.bg = c; st.bgMode = G.mode; st.bgKey = JSON.stringify(stg); return;
