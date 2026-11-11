@@ -34,7 +34,7 @@ function imageList() {
   const icons = ['orders','mail','shop','inventory','seed','room','garden','greenhouse','craft','hint','voice','today','calendar'];
   return l.map(n => [n, `img/${n}.png`]).concat(icons.map(n => ['icon_' + n, `img/icon/${n}.png`])).concat([
     ['bg_garden_pad', 'img/bg_garden_pad.jpg'], ['bg_garden_phone', 'img/bg_garden_phone.jpg'], ['bg_gh_pad', 'img/bg_gh_pad.jpg'], ['bg_gh_phone', 'img/bg_gh_phone.jpg'],
-    ['bg_room_pad_dusk', 'img/bg_room_pad_dusk.jpg'], ['bg_room_pad_night', 'img/bg_room_pad_night.jpg'], ['bg_room_phone_dusk', 'img/bg_room_phone_dusk.jpg'], ['bg_room_phone_night', 'img/bg_room_phone_night.jpg'],
+    ['bg_room_pad_night', 'img/bg_room_pad_night.jpg'], ['bg_room_phone_dusk', 'img/bg_room_phone_dusk.jpg'], ['bg_room_phone_night', 'img/bg_room_phone_night.jpg'],
     ['bg_room_pad', 'img/bg_room_pad.jpg'], ['bg_room_phone', 'img/bg_room_phone.jpg'],
     ['talk_smile', 'img/char/talk_smile.png'], ['talk_laugh', 'img/char/talk_laugh.png'], ['talk_surprise', 'img/char/talk_surprise.png'], ['talk_worry', 'img/char/talk_worry.png'], ['talk_think', 'img/char/talk_think.png'], ['talk_yawn', 'img/char/talk_yawn.png'],
     ['sd_stand', 'img/char/sd_stand.png'], ['sd_wave', 'img/char/sd_wave.png'], ['sd_jump', 'img/char/sd_jump.png'], ['sd_water', 'img/char/sd_water.png'], ['sd_flower', 'img/char/sd_flower.png'], ['sd_write', 'img/char/sd_write.png'], ['sd_yawn', 'img/char/sd_yawn.png'], ['sd_cheer', 'img/char/sd_cheer.png'], ['so_1', 'img/char/so_1.png'], ['so_2', 'img/char/so_2.png'], ['so_3', 'img/char/so_3.png'], ['so_4', 'img/char/so_4.png'], ['so_5', 'img/char/so_5.png'], ['so_6', 'img/char/so_6.png'], ['so_7', 'img/char/so_7.png'], ['so_8', 'img/char/so_8.png'], ['to_smile_a', 'img/char/to_smile_a.png'], ['to_laugh_a', 'img/char/to_laugh_a.png'], ['to_surprise_a', 'img/char/to_surprise_a.png'], ['to_worry_a', 'img/char/to_worry_a.png'], ['to_think_a', 'img/char/to_think_a.png'], ['to_laugh_b', 'img/char/to_laugh_b.png'], ['to_smile_b', 'img/char/to_smile_b.png'], ['to_laugh_c', 'img/char/to_laugh_c.png'], ['to_smile_c', 'img/char/to_smile_c.png'], ['to_laugh_d', 'img/char/to_laugh_d.png'], ['to_think_b', 'img/char/to_think_b.png'], ['to_laugh_e', 'img/char/to_laugh_e.png'],
@@ -50,7 +50,7 @@ function imageList() {
     ...MATS.map(m => ['mat_' + m.id, `img/mat/${m.id}.png`]),
     ...[0, 1, 2, 3].flatMap(r => [0, 1, 2].map(c => [`sk_${r}${c}`, `img/shop/sk_${r}${c}.png`])),
     ['bg_garden_pad_dusk', 'img/bg_garden_pad_dusk.jpg'], ['bg_garden_pad_night', 'img/bg_garden_pad_night.jpg'], ['bg_garden_phone_dusk', 'img/bg_garden_phone_dusk.jpg'], ['bg_garden_phone_night', 'img/bg_garden_phone_night.jpg'],
-    ['bg_gh_pad_dusk', 'img/bg_gh_pad_dusk.jpg'], ['bg_gh_pad_night', 'img/bg_gh_pad_night.jpg'],
+    ['bg_gh_pad_night', 'img/bg_gh_pad_night.jpg'],
     ['bg_gh_phone_dusk', 'img/bg_gh_phone_dusk.jpg'], ['bg_gh_phone_night', 'img/bg_gh_phone_night.jpg']]);
 }
 /* 시작할 때는 지금 기기(가로/세로)·지금 시간대 배경만 받고, 나머지는 시작한 뒤에 조용히 받음 (로딩 줄이기) */
@@ -61,7 +61,8 @@ function needNow(n) {
   const mode = window.innerHeight > window.innerWidth ? 'phone' : 'pad';
   if (!n.includes('_' + mode)) return false;
   const v = n.match(/_(dusk|night)$/); if (!v) return true;
-  const st = typeof gardenStage === 'function' ? gardenStage() : '';
+  const two = mode === 'pad' && /^bg_(room|gh)_/.test(n) && typeof dayNightStage === 'function';       // 패드 방·온실은 낮·밤 두 장
+  const st = two ? dayNightStage() : typeof gardenStage === 'function' ? gardenStage() : '';
   return v[1] === st;
 }
 function loadOne([n, src], onDone) {

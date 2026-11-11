@@ -44,7 +44,7 @@
       },
     });
   }
-  const roomStage = gardenStage;                          // 정원과 같은 시간표
+  const roomStage = () => G.mode === 'pad' ? dayNightStage() : gardenStage();   // 패드 그림은 낮·밤 두 장, 폰은 정원과 같은 시간표
   const newPhone = () => G.mode === 'phone' && roomStage() !== '';
   const objs = () => newPhone() ? OBJ_NEW_PHONE : OBJ[G.mode];
   const SOON = { voice: '말로 쓰기', today: '오늘 기록', calendar: '달력' };

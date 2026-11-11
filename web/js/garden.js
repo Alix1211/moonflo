@@ -531,6 +531,11 @@ function lawnFlowers() {
 }
 
 /* 정원 배경도 온실처럼 시간대별: 6시 낮 · 17시 노을 · 19시 30분 밤 */
+function dayNightStage() {                 // 방·온실 패드 그림은 낮·밤 두 장: 노을 시간대는 18시까지 낮, 이후 밤
+  const s = gardenStage(); if (s !== 'dusk') return s;
+  const d = G.fakeHour != null ? null : new Date(G.now || Date.now()), t = G.fakeHour != null ? G.fakeHour : d.getHours() + d.getMinutes() / 60;
+  return t < 18 ? '' : 'night';
+}
 function gardenStage() {
   const d = G.fakeHour != null ? null : new Date(G.now || Date.now()), t = G.fakeHour != null ? G.fakeHour : d.getHours() + d.getMinutes() / 60;
   return t < 6 ? 'night' : t < 17 ? '' : t < 19.5 ? 'dusk' : 'night';

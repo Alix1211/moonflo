@@ -271,6 +271,7 @@
     const d = G.fakeHour != null ? null : new Date(G.now || Date.now()), t = G.fakeHour != null ? G.fakeHour : d.getHours() + d.getMinutes() / 60;
     let a;                                   // 섞지 않고 시간이 되면 바로 바뀜: 6시 낮 · 17시 노을 · 19시 30분 밤
     if (t < 6) a = 'night'; else if (t < 17) a = ''; else if (t < 19.5) a = 'dusk'; else a = 'night';
+    if (G.mode === 'pad' && a === 'dusk') a = t < 18 ? '' : 'night';     // 패드 그림은 낮·밤 두 장
     const b = a, w = 0;
     return { a, b, w: Math.round(w * 20) / 20 };
   }
