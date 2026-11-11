@@ -66,10 +66,23 @@
       save(); G.dirty = true; await flush(); return true;
     } finally { sending = false; }
   };
+  // 혈압 기록: 적는 즉시 케인 우체통(「답장」 탭)으로 한 줄 전송 — 못 보내면 보관했다가 다시 보냄, 같은 번호는 시트가 한 번만 받음
+  const bpLine = (s, d, t) => { const x = new Date(t), h = x.getHours(); return `혈압 ${s}/${d}  ·  ${x.getMonth() + 1}월 ${x.getDate()}일 ${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(x.getMinutes()).padStart(2, '0')}`; };
+  window.sendBP = function (s, d, t) {
+    if (!url() || !G.S) return;
+    try { G.S.outbox = G.S.outbox || []; const c = 'bp' + t; if (!G.S.outbox.some(m => m.cid === c)) G.S.outbox.push({ cid: c, to: RULES.mailTo || 'kane', from: '혈압', body: bpLine(s, d, t), at: Date.now() }); save(); flush(); } catch (e) {}
+  };
+  function backfillBP() {                       // 처음 한 번: 최근 30일 혈압 기록도 함께 보냄
+    if (!url() || !G.S || G.S.bpSynced) return;
+    const from = Date.now() - 30 * 864e5, list = [];
+    for (const k in (G.S.rec || {})) for (const q of ((G.S.rec[k] || {}).bp || [])) if (q && q.t >= from && q.s && q.d) list.push(q);
+    list.sort((a, b) => a.t - b.t); list.forEach(q => window.sendBP(q.s, q.d, q.t));
+    G.S.bpSynced = 1; save();
+  }
   window.mailReady = () => !!url() && (!url().includes('box=') || ver >= 2);
   window.giftReady = () => !!url() && ver >= 2;
   window.pullMails = pull;
   setInterval(pull, 5 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
-  const t = setInterval(() => { if (G.S) { clearInterval(t); setTimeout(pull, 2500); } }, 500);
+  const t = setInterval(() => { if (G.S) { clearInterval(t); setTimeout(pull, 2500); setTimeout(backfillBP, 6000); } }, 500);
 })();

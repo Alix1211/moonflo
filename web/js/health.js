@@ -257,7 +257,7 @@
       saveBP() {
         const s = +this.bp.sys, d = +this.bp.dia;
         if (!(s >= 70 && s <= 260 && d >= 40 && d <= 160 && s > d)) { toast('숫자를 다시 확인해 주세요'); return; }
-        const R = dayRec(todayKey()); R.bp.push({ t: Date.now(), s, d }); save();
+        const R = dayRec(todayKey()); const tt = Date.now(); R.bp.push({ t: tt, s, d }); save(); if (window.sendBP) sendBP(s, d, tt);
         if (!giveDiamond('bp')) toast(`혈압 ${s}/${d} 기록했어요`); else cheer();
         this.go('main');
       },
